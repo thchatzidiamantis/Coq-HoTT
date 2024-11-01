@@ -34,6 +34,7 @@ Proof.
   contradiction (not_lt_zero_r i).
 Defined.
 
+(** We are not using this definition yet, as it clashes with the implicit {n : nat} in our predicate.  *)
 Definition is_bar {A : Type} (B : forall {n : nat} (s : Seq A n), Type)
   := forall (s : nat -> A), {n : nat & B (restrict s n)}.
 
