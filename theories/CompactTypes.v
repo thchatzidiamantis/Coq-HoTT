@@ -1,13 +1,13 @@
-Require Import HoTT.Basics HoTT.Types.
-Require Import HoTT.Truncations.Core.
-Require Import HoTT.Spaces.Nat.Core.
-Require Import HoTT.Spaces.Cantor.
-Require Import HoTT.BarInduction.
-Require Import HoTT.Modalities.ReflectiveSubuniverse.
-Require Import HoTT.Truncations.Connectedness.
-Require Import HoTT.Homotopy.Suspension.
-Require Import HoTT.Pointed.
-Require Import HoTT.Sequences.
+Require Import Basics Types.
+Require Import Truncations.Core.
+Require Import Spaces.Nat.Core.
+Require Import Spaces.Cantor.
+Require Import BarInduction.
+Require Import Modalities.ReflectiveSubuniverse.
+Require Import Truncations.Connectedness.
+Require Import Homotopy.Suspension.
+Require Import Pointed.
+Require Import Sequences.
 
 Open Scope nat_scope.
 Open Scope pointed_scope.
@@ -34,21 +34,19 @@ Proof.
   intro p.
   exists (p false).
   intro r.
-  remember (p false) as b eqn:s ; induction b.
-  - induction a.
-    + exact r.
-    + exact s.
+  remember (p false) as b eqn:s; induction b.
+  - destruct a; assumption.
   - contradiction (false_ne_true (s^ @ r)). 
 Defined.
 
 (** We prove that a type is searchable if and only if it is compact and inhabited. *)
 
+(* jdc: name?  Maybe embed in next result? *)
 Definition test_function (A : Type) (a : A) (p : A -> Bool)
   : (exists x : A , p x = false) + (forall x : A, p x = true) 
     -> {a : A & p a = true -> forall x : A, p x = true}.
 Proof. 
-  intro z.
-  induction z as [z|z'].
+  intros [z|z'].
   - exists (z.1).
     intro hz.
     contradiction (false_ne_true (z.2^ @ hz)).
@@ -65,11 +63,11 @@ Defined.
 Definition is_compact_is_searchable {A : Type} : is_searchable A -> is_compact A.
 Proof.
   intros h p.
-  remember (p (h p).1) as b eqn:r ; induction b.
+  remember (p (h p).1) as b eqn:r; induction b.
   - exact (inr ((h p).2 r)).
   - left.
-    exists (h p).1 ; exact (r).
-Defined.    
+    exists (h p).1; exact r.
+Defined.
 
 Definition is_inhabited_is_searchable {A : Type} : is_searchable A -> A
   := fun h => (h (fun a => true)).1.
@@ -86,7 +84,7 @@ Defined.
 
 Definition is_searchable_suspension_ptype `{Univalence} (A : pType)
   : is_searchable (Susp A)
-  := (is_searchable_is_connected [Susp A , pt] isconnected_susp).
+  := is_searchable_is_connected [Susp A , pt] isconnected_susp.
 
 (** A reformulation of the definition, presenting the witnesses as a selection function. *)
 
@@ -96,13 +94,20 @@ Definition is_selection {A : Type} (eps : (A -> Bool) -> A) : Type
 Definition is_searchable' (A : Type) : Type 
   := {eps : (A -> Bool) -> A & 
       forall p : A -> Bool, p (eps p) = true -> forall a : A, p a = true}.
+(* jdc: use is_selection on previous line? *)
+
+(* jdc: This handles some of the things below: *)
+Definition shortcut {A : Type} : is_searchable' A <~> is_searchable A
+  := equiv_sig_coind _ _.
 
 Definition selection_is_searchable' {A : Type} (cpt' : is_searchable' A) := cpt'.1.
 
 Definition selection_property_is_searchable' {A : Type} (cpt' : is_searchable' A) := cpt'.2.
 
+(*
 Check selection_is_searchable'.
 Check selection_property_is_searchable'.
+*)
 
 Definition is_searchable'_is_searchable {A : Type} (cpt : is_searchable A) 
   : is_searchable' A.
@@ -127,24 +132,31 @@ Definition is_uniformly_searchable (A : Type) {usA : UStructure A}
 
 Section Uniform_Search.
 
-  (** Following https://www.cs.bham.ac.uk/~mhe/TypeTopology/TypeTopology.UniformSearch.html, we prove that if X is searchable then (nat -> X) is uniformly searchable. *)
+  (** Following https://www.cs.bham.ac.uk/~mhe/TypeTopology/TypeTopology.UniformSearch.html, we prove that if [X] is searchable then [nat -> X] is uniformly searchable. *)
 
   Context {X : Type} (is_searchable_X : is_searchable X).
-  Context (x0 : X := is_inhabited_is_searchable is_searchable_X).
+
+  (* jdc: this was unused.  But if kept, a Let is better than a Context line:
+  Let x0 : X := is_inhabited_is_searchable is_searchable_X. *)
+
+  (* jdc:  I don't understand why we would want this hypothesis.  Maybe it's better to take [c] to be the constant sequence at x0, or something like that?  And maybe better to inline it just to the one use? *)
   Context (c : nat -> X).
 
+  (* jdc: The next two would be more clear using the witness_* functions, I think. *)
   Definition eps : (X -> Bool) -> X := (is_searchable'_is_searchable is_searchable_X).1.
 
   Definition eps_property := (is_searchable'_is_searchable is_searchable_X).2.
-  Check eps_property.
+  (* Check eps_property. *)
 
+  (* jdc: Explain "uq". Use something self-explanatory instead? *)
   Definition uq_char : (X -> Bool) -> Bool := fun p => p (eps p).
 
+  (* jdc: not used. *)
   Definition uq_char_spec := fun (p : X -> Bool) 
                               => fun (t : forall x : X, p x = true) => t (eps p).
-  Check uq_char_spec.
+  (* Check uq_char_spec. *)
 
-  (** The witness function for prediactes on (nat -> X) (no uniform continuity required in the construction). *)
+  (** The witness function for predicates on [nat -> X] (no uniform continuity required in the construction). *)
   Definition eps_nat (n : nat) : ((nat -> X) -> Bool) -> (nat -> X).
   Proof.
     induction n; intro p.
@@ -156,6 +168,7 @@ Section Uniform_Search.
 
   Definition uq_char_nat (n : nat) := fun p => p (eps_nat n p).
 
+  (* jdc: not used. *)
   Definition uq_char_nat_spec_1 (p : (nat -> X) -> Bool) (n : nat)
     (is_mod_n : is_modulus_of_uniform_continuity n p)
     (h : forall u : nat -> X, p u = true)
@@ -164,7 +177,7 @@ Section Uniform_Search.
     apply h.
   Defined.
 
-  (** the desired property of the witness function. *)
+  (** The desired property of the witness function. *)
   Definition uq_char_nat_spec_2 {n : nat} (p : (nat -> X) -> Bool)
     (is_mod : is_modulus_of_uniform_continuity n p)
     (h : uq_char_nat n p = true )
@@ -174,6 +187,7 @@ Section Uniform_Search.
     - exact (fun u => (is_mod u c tt) @ h).
     - intro u. 
       set (x1 := eps (fun y => uq_char_nat n (p o (cons y)))).
+      (* jdc: Maybe some parts here should be lemmas?  I didn't look closely. *)
       assert (consprop : forall x : X, 
                       uq_char_nat n (p o (cons x)) = true 
                         -> forall v : nat -> X, p (cons x v) = true).

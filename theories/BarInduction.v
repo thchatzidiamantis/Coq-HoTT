@@ -1,7 +1,7 @@
-Require Import HoTT.Basics HoTT.Types.
-Require Import HoTT.Truncations.Core.
-Require Import HoTT.Spaces.Nat.Core.
-Require Import HoTT.Sequences.
+Require Import Basics Types.
+Require Import Truncations.Core.
+Require Import Spaces.Nat.Core.
+Require Import Sequences.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -40,6 +40,7 @@ Definition is_bar {A : Type} (B : forall {n : nat} (s : Seq A n), Type)
 
 Definition decidable_bar_induction (A : Type) :=
   forall (B : forall {n : nat} (s : Seq A n), Type)
+(* jdc: isprop would be better.  "pred" is often used for predecessor. *)
   (ispred : forall {n : nat} (s : Seq A n), IsHProp (B s))
   (dec : forall {n : nat} (s : Seq A n), Decidable (B s))
   (ind : forall (n : nat) (s : Seq A n), (forall (a : A), B (append s a)) -> B s)
@@ -71,7 +72,7 @@ Definition uq_theorem_family {A : Type} (p : (nat -> A) -> Bool)
   : forall (n : nat) (s : Seq A n), Type.
 Proof.
   intros n s.
-  exact (forall (u v : (nat -> A)) (h : restrict u n = s), u =[n] v -> p u = p v).
+  exact (forall (u v : nat -> A) (h : restrict u n = s), u =[n] v -> p u = p v).
 Defined.
 
 Definition is_bar_uq_theorem_family {A : Type} 
@@ -86,6 +87,7 @@ Proof.
   assert (d : u =[conn.1] s).
   - (* Incomplete step, searching for the best way to go between =[n] and restrict. 
        Ideally want a theorem (u =[n] v) <-> (restrict u n = restrict v n). *)
+    admit. (* jdc: this line need to allow the file to build *)
   - intro t.
     set (l := us_symmetric conn.1 _ _ d).
     set (l' := us_transitive conn.1 _ _ _ l t).

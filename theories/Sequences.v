@@ -1,6 +1,6 @@
-Require Import HoTT.Basics HoTT.Types.
-Require Import HoTT.Truncations.Core.
-Require Import HoTT.Spaces.Nat.Core.
+Require Import Basics Types.
+Require Import Truncations.Core.
+Require Import Spaces.Nat.Core.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -14,7 +14,7 @@ Class UStructure (us_type : Type) := {
   us_pred : forall (n : nat) (x y : us_type), us_rel n.+1 x y -> us_rel n x y
 }.
 
-Notation "u =[ n  ] v" := (us_rel n u v) (at level 70).
+Notation "u =[ n ] v" := (us_rel n u v) (at level 70).
 
 Definition refl_test (X : Type) (Struct : UStructure X) (n : nat)
   : forall (x y : X), x = y -> us_rel n x y
@@ -23,16 +23,12 @@ Definition refl_test (X : Type) (Struct : UStructure X) (n : nat)
 (** Every type admits the trivial uniform structure with the standard identity type on every level. *)
 Global Instance trivial_us {X : Type} : UStructure X.
 Proof.
-  snrapply Build_UStructure.
-  - exact (fun n x y => (x = y)).
-  - exact (fun _ _ => idpath).
-  - exact (fun _ _ _ => inverse).
-  - exact (fun _ _ _ _ => concat).
-  - exact (fun _ _ _ h => h).
+  srapply (Build_UStructure _ (fun n x y => (x = y))).
+  exact (fun _ _ _ => idmap).
 Defined.
 
 (** The first term of a sequence. *)
-Definition head {X : Type} (u : nat -> X) : X := u (0 : nat).
+Definition head {X : Type} (u : nat -> X) : X := u 0.
 
 (** Shift of a sequence by 1 to the left. *)
 Definition tail {X : Type} (u : nat -> X) : (nat -> X) := u o S.
@@ -53,7 +49,7 @@ Defined.
 Definition tail_cons {X : Type} (u : nat -> X) {x : X} : tail (cons x u) == u
   := fun _ => idpath.
 
-(** A uniform structure on types of sequences, with the relation for n : nat given by  *)
+(** A uniform structure on types of sequences, with the relation for [n : nat] given by: *)
 
 Definition seq_agree_on {X : Type} (n : nat) : (nat -> X) -> (nat -> X) -> Type.
 Proof.
@@ -63,12 +59,13 @@ Proof.
 Defined.
 
 Definition seq_agree_homotopic {X : Type} {n : nat} 
-: forall u v : nat -> X, forall h : u == v, seq_agree_on n u v.
+  : forall u v : nat -> X, forall h : u == v, seq_agree_on n u v.
+(* jdc: better to move args to left of colon *)
 Proof.
   induction n.
-  - reflexivity.
+  - reflexivity. (* jdc: this is an odd tactic to use; you really want [fun _ _ _ => tt], don't you? *)
   - intros u v h.
-    constructor.
+    constructor. (* jdc: split is a common idiom to use here *)
     + exact (h 0).
     + exact (IHn _ _ (fun n => h n.+1)). 
 Defined.
@@ -78,17 +75,17 @@ Proof.
   snrapply Build_UStructure.
   - exact seq_agree_on.
   - intros n u ; apply (seq_agree_homotopic).
-      reflexivity.
+    reflexivity.
   - induction n.
-      + exact (fun _ _ _ => tt).
-      + exact (fun _ _ h => ((fst h)^, IHn _ _ (snd h))).
+    + exact (fun _ _ _ => tt).
+    + exact (fun _ _ h => ((fst h)^, IHn _ _ (snd h))).
   - induction n.
-      + exact (fun _ _ _ _ _ => tt).
-      + exact (fun _ _ _ huv hvw => 
-              ((fst huv) @ (fst hvw), IHn _ _ _ (snd huv) (snd hvw))).
+    + exact (fun _ _ _ _ _ => tt).
+    + exact (fun _ _ _ huv hvw => 
+               ((fst huv) @ (fst hvw), IHn _ _ _ (snd huv) (snd hvw))).
   - induction n.  
-      + exact (fun _ _ _ => tt).
-      + exact (fun _ _ h => (fst h, IHn _ _ (snd h))).
+    + exact (fun _ _ _ => tt).
+    + exact (fun _ _ h => (fst h, IHn _ _ (snd h))).
 Defined.
 
 (** Definition of a continuous function depending on two uniform structures. *)
@@ -108,12 +105,13 @@ Definition is_uniformly_continuous {X Y : Type} {usX : UStructure X} (p : X -> Y
 
 Definition is_uniformly_continuous_is_continuous {X Y : Type} {usX : UStructure X} (p : X -> Y) 
   : is_uniformly_continuous p -> is_continuous p
-  := fun uc u m => (uc.1 ; (fun v => uc.2 u v)).
+  := fun uc u m => (uc.1 ; fun v => uc.2 u v).
 
-(** a uniformly continuous function takes homotopic sequences to equal outputs. *)
+(** A uniformly continuous function takes homotopic sequences to equal outputs. *)
 Definition uniformly_continuous_extensionality
   {X Y : Type} (p : (nat -> X) -> Y) (u v : nat -> X) (hp : is_uniformly_continuous p)
   : u == v -> p u = p v
+(* jdc: again, (h : u == v) should be to the left of the colon; I won't mention this elsewhere *)
   := fun h => (hp.2 u v (seq_agree_homotopic u v h)).
 
 Definition cons_decreases_modulus {X Y : Type} (p : (nat -> X) -> Y) (n : nat) (b : X)
@@ -122,7 +120,7 @@ Definition cons_decreases_modulus {X Y : Type} (p : (nat -> X) -> Y) (n : nat) (
 Proof.
   intros hSn u v huv.
   apply hSn.
-  constructor.
+  constructor. (* jdc: maybe these last three lines should be a lemma about =[n] and cons? *)
   - reflexivity.
   - exact huv.
 Defined.
