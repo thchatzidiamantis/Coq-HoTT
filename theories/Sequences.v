@@ -1,6 +1,9 @@
 Require Import Basics Types.
 Require Import Truncations.Core.
 Require Import Spaces.Nat.Core.
+Require Import Basics Types.
+Require Import Truncations.Core.
+Require Import Spaces.Nat.Core.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -16,9 +19,20 @@ Class UStructure (us_type : Type) := {
 
 Notation "u =[ n ] v" := (us_rel n u v) (at level 70).
 
-Definition refl_test (X : Type) (Struct : UStructure X) (n : nat)
+Definition refl_test {X : Type} {struct : UStructure X} (n : nat)
   : forall (x y : X), x = y -> us_rel n x y
   := fun x y h => (h # (us_reflexive n x)).  
+
+Definition us_rel_leq {X : Type} {struct : UStructure X} 
+  {m n : nat} (hm : m <= n) {u v : X} (h : u =[n] v)
+  : u =[m] v.
+Proof.
+  induction n in u, v, h, m, hm |-*.
+  - rewrite (path_zero_leq_zero_r _ hm) ; exact h.
+  - destruct (equiv_leq_lt_or_eq hm) as [l|r].
+    + exact (IHn _ (leq_pred' l) _ _ (us_pred _ _ _ h)).
+    + rewrite r ; exact h.
+Defined.
 
 (** Every type admits the trivial uniform structure with the standard identity type on every level. *)
 Global Instance trivial_us {X : Type} : UStructure X.
@@ -41,7 +55,8 @@ Proof.
   - exact (u n).
 Defined.  
 
-Definition cons_head_tail {X : Type} (u : nat -> X) : cons (head u) (tail u) == u.
+Definition cons_head_tail {X : Type} (u : nat -> X) 
+  : cons (head u) (tail u) == u.
 Proof.
   by intros [|n].
 Defined.  
@@ -59,13 +74,12 @@ Proof.
 Defined.
 
 Definition seq_agree_homotopic {X : Type} {n : nat} 
-  : forall u v : nat -> X, forall h : u == v, seq_agree_on n u v.
-(* jdc: better to move args to left of colon *)
+  {u v : nat -> X} (h : u == v) 
+  : seq_agree_on n u v.
 Proof.
-  induction n.
-  - reflexivity. (* jdc: this is an odd tactic to use; you really want [fun _ _ _ => tt], don't you? *)
-  - intros u v h.
-    constructor. (* jdc: split is a common idiom to use here *)
+  induction n in u, v, h |-*.
+  - exact tt.
+  - split. 
     + exact (h 0).
     + exact (IHn _ _ (fun n => h n.+1)). 
 Defined.
@@ -100,21 +114,24 @@ Definition is_modulus_of_uniform_continuity
   {X Y : Type} {usX : UStructure X} (n : nat) (p : X -> Y)
   := forall u v : X, u =[n] v -> p u = p v.
 
-Definition is_uniformly_continuous {X Y : Type} {usX : UStructure X} (p : X -> Y)
+Definition is_uniformly_continuous {X Y : Type} 
+  {usX : UStructure X} (p : X -> Y)
   := exists n : nat, is_modulus_of_uniform_continuity n p.
 
-Definition is_uniformly_continuous_is_continuous {X Y : Type} {usX : UStructure X} (p : X -> Y) 
+Definition is_uniformly_continuous_is_continuous {X Y : Type} 
+  {usX : UStructure X} (p : X -> Y) 
   : is_uniformly_continuous p -> is_continuous p
   := fun uc u m => (uc.1 ; fun v => uc.2 u v).
 
 (** A uniformly continuous function takes homotopic sequences to equal outputs. *)
 Definition uniformly_continuous_extensionality
-  {X Y : Type} (p : (nat -> X) -> Y) (u v : nat -> X) (hp : is_uniformly_continuous p)
-  : u == v -> p u = p v
-(* jdc: again, (h : u == v) should be to the left of the colon; I won't mention this elsewhere *)
-  := fun h => (hp.2 u v (seq_agree_homotopic u v h)).
+  {X Y : Type} (p : (nat -> X) -> Y) (hp : is_uniformly_continuous p)
+  {u v : nat -> X} (h : u == v)
+  : p u = p v
+  := (hp.2 u v (seq_agree_homotopic h)).
 
-Definition cons_decreases_modulus {X Y : Type} (p : (nat -> X) -> Y) (n : nat) (b : X)
+Definition cons_decreases_modulus {X Y : Type} 
+  (p : (nat -> X) -> Y) (n : nat) (b : X)
   : is_modulus_of_uniform_continuity n.+1 p 
     -> is_modulus_of_uniform_continuity n (p o cons b).
 Proof.

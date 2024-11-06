@@ -8,6 +8,16 @@ Require Import Truncations.Connectedness.
 Require Import Homotopy.Suspension.
 Require Import Pointed.
 Require Import Sequences.
+Require Import Basics Types.
+Require Import Truncations.Core.
+Require Import Spaces.Nat.Core.
+Require Import Spaces.Cantor.
+Require Import BarInduction.
+Require Import Modalities.ReflectiveSubuniverse.
+Require Import Truncations.Connectedness.
+Require Import Homotopy.Suspension.
+Require Import Pointed.
+Require Import Sequences.
 
 Open Scope nat_scope.
 Open Scope pointed_scope.
@@ -54,7 +64,8 @@ Proof.
     exact (fun a => z').
 Defined.
 
-Definition is_searchable_is_compact_inhabited {A : Type} : is_compact A -> A -> is_searchable A.
+Definition is_searchable_is_compact_inhabited {A : Type} 
+  : is_compact A -> A -> is_searchable A.
 Proof.
   intros w a p.
   exact (test_function A a p (w p)).
@@ -92,37 +103,18 @@ Definition is_selection {A : Type} (eps : (A -> Bool) -> A) : Type
   := forall p : A -> Bool, p (eps p) = true -> forall a : A, p a = true.
 
 Definition is_searchable' (A : Type) : Type 
-  := {eps : (A -> Bool) -> A & 
-      forall p : A -> Bool, p (eps p) = true -> forall a : A, p a = true}.
-(* jdc: use is_selection on previous line? *)
+  := {eps : (A -> Bool) -> A & is_selection eps}.
 
 (* jdc: This handles some of the things below: *)
-Definition shortcut {A : Type} : is_searchable' A <~> is_searchable A
+Definition equiv_searchable_searchable'  {A : Type} 
+  : is_searchable' A <~> is_searchable A
   := equiv_sig_coind _ _.
 
-Definition selection_is_searchable' {A : Type} (cpt' : is_searchable' A) := cpt'.1.
+Definition selection_is_searchable' {A : Type} (cpt' : is_searchable' A) 
+  := cpt'.1.
 
-Definition selection_property_is_searchable' {A : Type} (cpt' : is_searchable' A) := cpt'.2.
-
-(*
-Check selection_is_searchable'.
-Check selection_property_is_searchable'.
-*)
-
-Definition is_searchable'_is_searchable {A : Type} (cpt : is_searchable A) 
-  : is_searchable' A.
-Proof.
-  exists (universal_witness cpt).
-  exact (witness_universality cpt).
-Defined.  
-
-Definition is_searchable_is_searchable' {A : Type} (cpt' : is_searchable' A) 
-  : is_searchable A.
-Proof.
-  intro p.
-  exists ((cpt').1 p).
-  rapply (cpt').2.
-Defined.
+Definition selection_property_is_searchable' {A : Type} (cpt' : is_searchable' A)
+  := cpt'.2.
 
 (** A type is uniformly searchable if it is searchable over uniformly continuous predicates. *)
 Definition is_uniformly_searchable (A : Type) {usA : UStructure A} 
@@ -142,19 +134,14 @@ Section Uniform_Search.
   (* jdc:  I don't understand why we would want this hypothesis.  Maybe it's better to take [c] to be the constant sequence at x0, or something like that?  And maybe better to inline it just to the one use? *)
   Context (c : nat -> X).
 
-  (* jdc: The next two would be more clear using the witness_* functions, I think. *)
-  Definition eps : (X -> Bool) -> X := (is_searchable'_is_searchable is_searchable_X).1.
+  Definition eps : (X -> Bool) -> X 
+    := universal_witness is_searchable_X.
 
-  Definition eps_property := (is_searchable'_is_searchable is_searchable_X).2.
-  (* Check eps_property. *)
+  Definition eps_property 
+    := witness_universality is_searchable_X.
 
   (* jdc: Explain "uq". Use something self-explanatory instead? *)
   Definition uq_char : (X -> Bool) -> Bool := fun p => p (eps p).
-
-  (* jdc: not used. *)
-  Definition uq_char_spec := fun (p : X -> Bool) 
-                              => fun (t : forall x : X, p x = true) => t (eps p).
-  (* Check uq_char_spec. *)
 
   (** The witness function for predicates on [nat -> X] (no uniform continuity required in the construction). *)
   Definition eps_nat (n : nat) : ((nat -> X) -> Bool) -> (nat -> X).
@@ -200,7 +187,8 @@ Section Uniform_Search.
                   @ (consprop (head u) (x1prop h (head u)) (tail u))).
   Defined.  
 
-  Definition has_uniformly_searchable_seq_is_searchable : is_uniformly_searchable (nat -> X).
+  Definition has_uniformly_searchable_seq_is_searchable 
+    : is_uniformly_searchable (nat -> X).
   Proof.
     intros p cont_p.
     exact (eps_nat cont_p.1 p ; fun r => uq_char_nat_spec_2 p cont_p.2 r).
