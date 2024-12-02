@@ -126,8 +126,8 @@ Proof.
 Defined.
 
 Definition us_sequense_eq_iff {X : Type} {n : nat} {s t : nat -> X}
-  : s =[n] t <-> (forall (m : nat), m < n -> s m = t m)
-  := (fun h => us_sequense_eq_iff_1 h, fun h => us_sequense_eq_iff_2 h).
+  : (forall (m : nat), m < n -> s m = t m) <-> s =[n] t
+  := (fun h => us_sequense_eq_iff_2 h, fun h => us_sequense_eq_iff_1 h).
 
 (** Definition of a continuous function depending on two uniform structures. *)
 Definition is_continuous
