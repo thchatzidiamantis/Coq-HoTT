@@ -170,21 +170,18 @@ Defined.
 #[export]
 Hint Immediate istruncmap_mapinO_tr : typeclass_instances.
 
-(** ** Tactic to remove truncations in hypotheses if possible *)
+(** ** A few special things about the (-2)-truncation *)
 
-Ltac strip_truncations :=
-  (** search for truncated hypotheses *)
-  progress repeat
-    match goal with
-    | [ T : _ |- _ ]
-      => revert_opaque T;
-        refine (@Trunc_ind _ _ _ _ _);
-        (** ensure that we didn't generate more than one subgoal, i.e. that the goal was appropriately truncated *)
-        [];
-        intro T
-  end.
-
-(** See [strip_reflections] and [strip_modalities] for generalizations to other reflective subuniverses and modalities.  We provide this version because it sometimes needs fewer universes (due to the cumulativity of [Trunc]).  However, that same cumulativity sometimes causes free universe variables.  For a hypothesis of type [Trunc@{i} X], we can use [Trunc_ind@{i j}], but sometimes Coq uses [Trunc_ind@{k j}] with [i <= k] and [k] otherwise free.  In these cases, [strip_reflections] and/or [strip_modalities] may generate fewer universe variables. *)
+(** The type of contractible types is contractible. *)
+Definition contr_tr_minus_2@{u su | u < su} `{Univalence}
+  : Contr (Type_@{u su} (Tr (-2))).
+Proof.
+  apply (Build_Contr _ (exist@{su su} _ (Unit : Type@{u}) (inO_tr_istrunc _))).
+  intros [C ContrC].
+  apply equiv_path_sigma_hprop.
+  apply path_universe_uncurried.
+  symmetry; apply equiv_contr_unit.
+Defined.
 
 (** ** A few special things about the (-1)-truncation *)
 
@@ -282,6 +279,14 @@ Proof.
 Defined.
 
 (** ** Embeddings *)
+
+(** For any point in the image of an embedding, the fibers are contractable. *)
+Global Instance contr_hfiber_emb {A B} (a : A) (f : A -> B)
+  `{IsEmbedding f}
+  : Contr (hfiber f (f a)).
+Proof.
+  srapply contr_inhabited_hprop. exact (a; idpath (f a)).
+Defined.
 
 (** Since embeddings are the (-1)-truncated maps, a map that is both a surjection and an embedding is an equivalence. *)
 Definition isequiv_surj_emb {A B} (f : A -> B)
