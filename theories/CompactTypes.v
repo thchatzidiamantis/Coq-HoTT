@@ -13,34 +13,23 @@ Require Import Idempotents.
 Open Scope nat_scope.
 Open Scope pointed_scope.
 
-(*** Want to prove:
-- Syspension of any type is compact (could be not pointed, not empty).
-- LEM => every type is compact, every pointed type is searchable.
-    Is every type not not compact?
-- (Conjecture) If the 0-trunc has a section, X is compact <=> ||X||_0 is compact.
-- What happens when ||X||_0 has decidable equality.
-- Everything is compact <=> LEM for all types
-- LEM for Π_{} {a : A & p a = false} => is_compact A.
-    (so : is_compact is stronger than LEM for a given type).
-- Every HProp is compact => LEM for HProps.
-- HProp is compact + the relevant lemmas.
-- Compact is closed under retracts. *)
-
-(** Naming conventions following the Agda code by Martin Escardo. We are working with decidable predicates, equivalently functions to Bool. *)
-
 (** One notion of compactness: for every predicate we can decide whether it is always true or not. *)
-Definition is_compact (A : Type) : Type
+Definition compact (A : Type) : Type
   := (forall p : A -> Bool, {a : A & p a = false} + (forall a : A, p a = true)).
 
-Definition decidable_is_compact {A : Type} (c : is_compact A) : Decidable A.
+(** Any compact type is decidable. *)
+Definition decidable_compact {A : Type} (c : compact A) : Decidable A.
 Proof.
   induction (c (fun (_ : A) => false)) as [c1|c2].
   - exact (inl c1.1).
   - exact (inr (fun a => false_ne_true (c2 a))).
 Defined.
 
-Definition is_sig_compact (A : Type) : Type
+(** Equivalent definition of compactness: If a family over the type is decidable, then the Σ-type is decidable. *)
+Definition sig_compact (A : Type) : Type
   := forall P : A -> Type, (forall a : A, Decidable (P a)) -> Decidable (sig P).
+
+(** Maps for moving between the definitions. *)
 
 Definition pred_Bool {A : Type} (p : A -> Bool) : A -> Type
   := fun a => p a = false.
@@ -96,7 +85,7 @@ Proof.
   - exact n.
 Defined.
 
-Definition is_decidable_pred_Bool {A : Type} (p : A -> Bool)
+Definition decidable_pred_Bool {A : Type} (p : A -> Bool)
   : forall a : A, Decidable (pred_Bool p a).
 Proof.
   intro a.
@@ -105,8 +94,8 @@ Proof.
   - exact (inl r).
 Defined.
 
-Definition is_sig_compact_is_compact {A : Type} (c : is_compact A)
-  : is_sig_compact A.
+Definition sig_compact_compact {A : Type} (c : compact A)
+  : sig_compact A.
 Proof.
   intros P dec.
   destruct (c (pred_Bool_inv P dec)) as [l|r].
@@ -114,11 +103,11 @@ Proof.
   - exact (inr (fun dec' => (pred_Bool_inv_prop' _ _ _ (r dec'.1) dec'.2))).
 Defined.
 
-Definition is_compact_is_sig_compact {A : Type} (c : is_sig_compact A)
-  : is_compact A.
+Definition compact_sig_compact {A : Type} (c : sig_compact A)
+  : compact A.
 Proof.
   intros p.
-  destruct (c (pred_Bool p) (is_decidable_pred_Bool p)) as [l|r].
+  destruct (c (pred_Bool p) (decidable_pred_Bool p)) as [l|r].
   - exact (inl l).
   - right.
     intro a.
@@ -126,18 +115,35 @@ Proof.
     exact (fun w => r (a; w)).
 Defined.
 
+(** A weaker definition: for any decidable family, the dependent function type is decidable. *)
+Definition pi_compact (A : Type)
+  := forall (P : A -> Type) (dec : forall a : A, Decidable (P a)),
+      Decidable (forall a : A, P a).
+
+Definition pi_compact_sig_compact {A : Type} (c : sig_compact A)
+  : pi_compact A.
+Proof.
+  intros P dec.
+  destruct (c (fun a => ~(P a)) _) as [l|r].
+  - right; exact (fun f => l.2 (f l.1)).
+  - left.
+    intro a.
+    apply (stable_decidable (P a)).
+    exact (fun u => r (a; u)).
+Defined.
+
 (** Second notion of compactness, also called searchability: for every predicate we can find a witness for whether it is always true or not. *)
-Definition is_searchable (A : Type) : Type
+Definition searchable (A : Type) : Type
   := forall p : A -> Bool, {x : A & p x = true -> forall a : A, p a = true}.
 
-Definition universal_witness {A : Type} : is_searchable A -> (A -> Bool) -> A
+Definition universal_witness {A : Type} : searchable A -> (A -> Bool) -> A
   := fun w f => (w f).1.
 
-Definition witness_universality {A : Type} (s : is_searchable A) (p : A -> Bool)
+Definition witness_universality {A : Type} (s : searchable A) (p : A -> Bool)
   : p (universal_witness s p) = true -> forall a : A, p a = true
   := (s p).2.
 
-Definition is_searchable_Bool : is_searchable Bool.
+Definition searchable_Bool : searchable Bool.
 Proof.
   intro p.
   exists (p false).
@@ -149,8 +155,8 @@ Defined.
 
 (** We prove that a type is searchable if and only if it is compact and inhabited. *)
 
-Definition is_searchable_is_compact_inhabited {A : Type}
-  : is_compact A -> A -> is_searchable A.
+Definition searchable_compact_inhabited {A : Type}
+  : compact A -> A -> searchable A.
 Proof.
   intros w a p.
   induction (w p) as [l|r].
@@ -160,7 +166,7 @@ Proof.
     exact (fun a => r).
 Defined.
 
-Definition is_compact_is_searchable {A : Type} : is_searchable A -> is_compact A.
+Definition compact_searchable {A : Type} : searchable A -> compact A.
 Proof.
   intros h p.
   remember (p (h p).1) as b eqn:r; induction b.
@@ -169,61 +175,63 @@ Proof.
     exists (h p).1; exact r.
 Defined.
 
-Definition is_inhabited_is_searchable {A : Type} : is_searchable A -> A
+Definition inhabited_searchable {A : Type} : searchable A -> A
   := fun h => (h (fun a => true)).1.
 
-Definition is_searchable_iff {A : Type} : is_searchable A <-> A * (is_compact A)
-  := (fun s => (is_inhabited_is_searchable s, is_compact_is_searchable s),
-        fun c => is_searchable_is_compact_inhabited (snd c) (fst c)).
+Definition searchable_iff {A : Type} : searchable A <-> A * (compact A)
+  := (fun s => (inhabited_searchable s, compact_searchable s),
+        fun c => searchable_compact_inhabited (snd c) (fst c)).
 
-Definition is_compact_Empty : is_compact Empty
+Definition compact_Empty : compact Empty
   := fun p => (inr (fun a => Empty_rec a)).
 
-Definition is_compact_Empty' {A : Type} (not : ~A) : is_compact A
+Definition compact_Empty' {A : Type} (not : ~A) : compact A
   := fun p => ((inr (fun a => Empty_rec (not a)))).
 
-Definition compact_iff_searchable_or_empty {A : Type} :
-  is_compact A <-> (~ A) + is_searchable A.
+Definition compact_iff_not_or_searchable {A : Type} :
+  compact A <-> (~ A) + searchable A.
 Proof.
   constructor.
   - intro h.
-    destruct (decidable_is_compact h) as [l|r].
-    + exact (inr (is_searchable_is_compact_inhabited h l)).
+    destruct (decidable_compact h) as [l|r].
+    + exact (inr (searchable_compact_inhabited h l)).
     + exact (inl (r)).
   - intros [l|r].
-    + exact (is_compact_Empty' l).
-    + exact (is_compact_is_searchable r).
+    + exact (compact_Empty' l).
+    + exact (compact_searchable r).
 Defined.
 
 (** Every connected pointed type is searchable. *)
-Definition is_searchable_is_connected_pType `{Univalence} (A : pType)
+Definition searchable_is_connected_pType `{Univalence} (A : pType)
   (c : IsConnected (0 : trunc_index) A)
-  : is_searchable A
+  : searchable A
   := fun p => (pt; fun h => conn_point_elim (-1) _ h).
 
-Definition is_compact_retract {A : Type} (R : RetractOf A) (c : is_compact A)
-  : is_compact (retract_type R).
+(** Compact types are closed under retracts. *)
+Definition compact_retract {A : Type} (R : RetractOf A) (c : compact A)
+  : compact (retract_type R).
 Proof.
   intro p. destruct (c (p o (retract_retr R))) as [l|r].
   + exact (inl ((retract_retr R) l.1; l.2)).
   + exact (inr (fun a => (ap p ((retract_issect R) a))^ @ r ((retract_sect R) a))).
 Defined.
 
-Definition is_compact_retract' {A R : Type} {f : A -> R} {g : R -> A} 
-  (s : forall a, (f o g) a = a) (c : is_compact A)
-  : is_compact R.
+Definition compact_retract' {A R : Type} {f : A -> R} {g : R -> A}
+  (s : forall a, (f o g) a = a) (c : compact A)
+  : compact R.
 Proof.
   intro p. destruct (c (p o f)) as [l|r].
   + exact (inl (f l.1; l.2)).
   + exact (inr (fun a => (ap p (s a))^ @ r (g a))).
 Defined.
 
-Definition is_compact_set_trunc_is_compact `{Univalence} {A : Type} {n : nat}
+(** Assuming the set truncation map has a section, a type is compact if and only if its set truncation is compact. *)
+Definition compact_set_trunc_compact `{Univalence} {A : Type} {n : nat}
   (f : (Tr 0 A) -> A) (s : forall a, (tr o f) a = a)
-  : is_compact A <-> is_compact (Tr 0 A).
+  : compact A <-> compact (Tr 0 A).
 Proof.
   constructor.
-  1: exact (is_compact_retract' s).
+  1: exact (compact_retract' s).
   intros cpt p.
   destruct (cpt (Trunc_rec p)) as [l|r].
   - exact (inl (f l.1; ap (Trunc_rec p) (s l.1) @ l.2)).
@@ -231,8 +239,8 @@ Proof.
 Defined.
 
 (** Could also be done with a map Bool -> Susp A. *)
-Definition is_searchable_suspension `{Univalence} (A : Type)
-  : is_searchable (Susp A).
+Definition searchable_suspension `{Univalence} (A : Type)
+  : searchable (Susp A).
 Proof.
   intro p.
   remember (p North) as pn eqn:r; induction pn.
@@ -245,18 +253,18 @@ Defined.
 
 (* Following https://www.cs.bham.ac.uk/~txw467/tychonoff/InfiniteSearch1.html *)
 
-Definition is_searchable' (A : Type) : Type
+Definition searchable' (A : Type) : Type
   := forall P : A -> Type,
       (forall a : A, Decidable (P a))
         -> exists x : A, ((exists a : A, P a) -> P x).
 
-Definition is_searchable_is_searchable' {A : Type}
-  (h : is_searchable' A)
-  : is_searchable A.
+Definition searchable_searchable' {A : Type}
+  (h : searchable' A)
+  : searchable A.
 Proof.
-  apply (@is_searchable_iff A); constructor.
+  apply (@searchable_iff A); constructor.
   - exact (h (fun _ => Unit) (fun _ => inl tt)).1.
-  - apply is_compact_is_sig_compact.
+  - apply compact_sig_compact.
     intros P dec.
     specialize (h P dec).
     destruct (dec h.1) as [l|r].
@@ -264,66 +272,35 @@ Proof.
     + exact (inr (fun b => (r (h.2 (b.1; b.2))))).
 Defined.
 
-Definition is_searchable_is_searchable'2 {A : Type}
-  (h : is_searchable' A)
-  : is_searchable A.
+Definition searchable'_searchable {A : Type}
+  (h : searchable A)
+  : searchable' A.
 Proof.
-  intro p.
-  specialize (h (pred_Bool p) (is_decidable_pred_Bool p)).
-  exists h.1.
-  intros r a.
-  apply (@negb_ne (p a) false).
-  intro j.
-  specialize (h.2 (a; j)).
-  exact (fun h' => true_ne_false (r^ @ h')).
-Defined.
-
-Definition is_searchable'_is_searchable {A : Type}
-  (h : is_searchable A)
-  : is_searchable' A.
-Proof.
-  apply (@is_searchable_iff A) in h as [a h].
-  apply (is_sig_compact_is_compact) in h.
+  apply (@searchable_iff A) in h as [a h].
+  apply (sig_compact_compact) in h.
   intros P dec.
   destruct (h P dec) as [l|r].
   - exact (l.1; fun _ => l.2).
   - exact (a; fun h' => Empty_rect (fun _ => P a) (r h')).
 Defined.
 
-Definition is_searchable'_is_searchable2 {A : Type}
-  (h : is_searchable A)
-  : is_searchable' A.
-Proof.
-  intros P dec.
-  set (p := pred_Bool_inv P dec).
-  specialize (h p).
-  exists h.1.
-  intros (a, u).
-  remember (p h.1) as b eqn:s; destruct b.
-  - specialize (h.2 s a).
-    intro w.
-    contradiction (true_ne_false (w^ @ ((pred_Bool_inv_eval' P dec a u)))).
-  - exact (pred_Bool_inv_prop P dec h.1 s).
-Defined.
+(** Another equivalent definition of compactness, where we restrict to decidable propositions. *)
+Definition sig_compact_prop (A : Type) : Type
+  := forall P : A -> HProp,
+      (forall a : A, Decidable (P a)) -> Decidable (sig P).
 
-(** Do it with P : A -> DHprop. *)
-Definition is_sig_compact_prop (A : Type) : Type
-  := forall P : A -> Type,
-      (forall a : A, IsHProp (P a))
-        -> (forall a : A, Decidable (P a))
-          -> Decidable (sig P).
-
-Definition is_sig_compact_prop_is_sig_compact {A : Type}
-  (h : is_sig_compact A)
-  : is_sig_compact_prop A
-  := fun P hP1 hP2 => h P hP2.
+Definition sig_compact_prop_sig_compact {A : Type}
+  (h : sig_compact A)
+  : sig_compact_prop A
+  := fun P hP => h P hP.
 
 Definition predicate_prop_trunction {A : Type} (P : A -> Type)
-  := fun a => Trunc (-1) (P a).
+  : A -> HProp
+  := fun a => Build_HProp (Trunc (-1) (P a)).
 
-(** Next two proofs can definitely be shortened.
-- Use : Decidable(X) -> ~~-stable(X) -> X <-> ||X||_-1. *)
-Definition Decidable_predicate_prop_truncation {A : Type} {P : A -> Type}
+(** This can definitely be shortened.
+- Use : [Decidable(X) -> ~~-stable(X) -> (X <-> (Tr (-1) X))]. *)
+Definition decidable_predicate_prop_truncation {A : Type} {P : A -> Type}
   (dec : forall a : A, Decidable (P a))
   : forall a : A, Decidable (predicate_prop_trunction P a).
 Proof.
@@ -344,13 +321,13 @@ Proof.
     exact (x; (fst (@merely_inhabited_iff_inhabited_stable (P x) _)) hx).
 Defined.
 
-Definition is_sig_compact_sig_compact_prop {A : Type}
-  (h : is_sig_compact_prop A)
-  : is_sig_compact A.
+Definition sig_compact_sig_compact_prop {A : Type}
+  (h : sig_compact_prop A)
+  : sig_compact A.
 Proof.
   intros P hP.
-  destruct (h (predicate_prop_trunction P) _ 
-              (Decidable_predicate_prop_truncation hP)) as [[l k]|r].
+  destruct (h (predicate_prop_trunction P)
+              (decidable_predicate_prop_truncation hP)) as [[l k]|r].
   - exact (inl (sigma_iff_prop_truncation_Decidable hP (l; k))).
   - right.
     intros [x z].
@@ -360,23 +337,8 @@ Defined.
 Definition is_selection {A : Type} (eps : (A -> Bool) -> A) : Type
   := forall p : A -> Bool, p (eps p) = true -> forall a : A, p a = true.
 
-(** A reformulation of the definition, presenting the witnesses as a selection function. *)
-
-(* Definition is_searchable' (A : Type) : Type
-  := {eps : (A -> Bool) -> A & is_selection eps}.
-
-Definition equiv_searchable_searchable'  {A : Type}
-  : is_searchable' A <~> is_searchable A
-  := equiv_sig_coind _ _.
-
-Definition selection_is_searchable' {A : Type} (cpt' : is_searchable' A)
-  := cpt'.1.
-
-Definition selection_property_is_searchable' {A : Type} (cpt' : is_searchable' A)
-  := cpt'.2. *)
-
 (** A type is uniformly searchable if it is searchable over uniformly continuous predicates. *)
-Definition is_uniformly_searchable (A : Type) {usA : UStructure A}
+Definition uniformly_searchable (A : Type) {usA : UStructure A}
   := forall (p : A -> Bool),
       is_uniformly_continuous p
         -> exists w0 : A, (p w0 = true -> forall u : A, p u = true).
@@ -385,7 +347,7 @@ Section Uniform_Search.
 
   (** Following https://www.cs.bham.ac.uk/~mhe/TypeTopology/TypeTopology.UniformSearch.html, we prove that if [X] is searchable then [nat -> X] is uniformly searchable. *)
 
-  Context {X : Type} (is_searchable_X : is_searchable X).
+  Context {X : Type} (is_searchable_X : searchable X).
 
   Definition eps : (X -> Bool) -> X
     := universal_witness is_searchable_X.
@@ -400,7 +362,7 @@ Section Uniform_Search.
   Definition eps_nat (n : nat) : ((nat -> X) -> Bool) -> (nat -> X).
   Proof.
     induction n; intro p.
-    - exact (fun _ => is_inhabited_is_searchable is_searchable_X).
+    - exact (fun _ => inhabited_searchable is_searchable_X).
     - pose (A q := q (IHn q)).
       pose (y0 := eps (fun x => A (fun a => p (cons x a)))).
       exact (cons y0 (IHn (p o cons y0))).
@@ -415,26 +377,28 @@ Section Uniform_Search.
     : forall u : nat -> X, p u = true.
   Proof.
     induction n in p, is_mod, h |- *.
-    - exact (fun u => (is_mod u (fun _ => is_inhabited_is_searchable is_searchable_X) tt) @ h).
+    - exact (fun u =>
+            (is_mod u (fun _ => inhabited_searchable is_searchable_X) tt) @ h).
     - intro u.
-      set (x1 := eps (fun y => uq_char_nat n (p o (cons y)))).
-      (* jdc: Maybe some parts here should be lemmas?  I didn't look closely. *)
+      pose (x1 := eps (fun y => uq_char_nat n (p o (cons y)))).
       assert (consprop : forall x : X,
-                      uq_char_nat n (p o (cons x)) = true
-                        -> forall v : nat -> X, p (cons x v) = true).
-      + exact (fun _ k => IHn (p o (cons _)) (cons_decreases_modulus p n _ is_mod) k).
+                          uq_char_nat n (p o (cons x)) = true
+                            -> forall v : nat -> X, p (cons x v) = true).
+      + exact (fun _ k =>
+                IHn (p o (cons _)) (cons_decreases_modulus p n _ is_mod) k).
       + assert (x1prop : uq_char_nat n (p o (cons x1)) = true
                           -> forall x : X, uq_char_nat n (p o (cons x)) = true).
-        * exact (fun l x => eps_property (fun y => uq_char_nat n (p o (cons y))) l x).
+        * exact (fun l x =>
+                  eps_property (fun y => uq_char_nat n (p o (cons y))) l x).
         * exact ((uniformly_continuous_extensionality
                   p (is_u_continuous_has_modulus is_mod) (cons_head_tail u))^
                     @ (consprop (head u) (x1prop h (head u)) (tail u))).
   Defined.
 
-  Definition has_uniformly_searchable_seq_is_searchable
-    : is_uniformly_searchable (nat -> X)
+  Definition has_uniformly_searchable_seq_searchable
+    : uniformly_searchable (nat -> X)
     := fun p cont_p
-        => (eps_nat (cont_p 1).1 p; 
+        => (eps_nat (cont_p 1).1 p;
             fun r => uq_char_nat_spec_2 p (cont_p 1).2 r).
 
 End Uniform_Search.
