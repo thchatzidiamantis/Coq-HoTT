@@ -1,24 +1,39 @@
 Require Import Basics Types.
 Require Import Truncations.Core.
 Require Import Spaces.Nat.Core.
-Require Import Spaces.Cantor.
-Require Import NatSeq.
-Require Import Modalities.ReflectiveSubuniverse.
-Require Import Truncations.Connectedness.
-Require Import Homotopy.Suspension.
-Require Import Pointed.
+Require Import CompactTypes.
 Require Import Universes.TruncType Universes.HProp.
 
-Open Scope nat_scope.
-Open Scope pointed_scope.
+(** * We prove that HProp is searchable, assuming univalence. The results should probably be moved to the Universes.HProp and CompactTypes files*)
 
-(* Is there a propext axiom in the library? *)
-Definition hprop_nn_unit_or_empty `{Univalence} (P : HProp) : ~ ((P <> Unit_hp) * (P <> False_hp)).
+Definition nn_unit_or_empty_hprop `{Univalence} (P : HProp)
+  : ~ ((P <> Unit_hp) * (P <> False_hp)).
 Proof.
   intros [h1 h2].
   apply (iff_contradiction (~ P)); constructor.
-  - intro p.
-    exact (h1 (equiv_path_iff_hprop (fun _ => tt, fun _ => p))).
-  - intro q.
-    exact (h2 (equiv_path_iff_hprop (q, Empty_rec))).
+  - intro p; exact (h1 (equiv_path_iff_hprop (fun _ => tt, fun _ => p))).
+  - intro q; exact (h2 (equiv_path_iff_hprop (q, Empty_rec))).
+Defined.
+
+Definition WeaklyConstant_HProp_to_stable_paths `{Univalence} {A : Type}
+  (F : HProp -> A) (s : forall x y : A, Stable (x = y)) (h1 : F Unit_hp = F False_hp)
+  : forall (B : HProp), F B = F Unit_hp.
+Proof.
+  intros B.
+  apply (s (F B) (F Unit_hp)); intro h'.
+  apply (nn_unit_or_empty_hprop B).
+  exact (fun l => h' (ap F l), fun r => (h' ((ap F r) @ h1^))).
+Defined.
+
+Definition WeaklyConstant_HProp_to_stable_paths' `{Univalence} {A : Type}
+  (F : HProp -> A) (s : forall x y : A, Stable (x = y)) (h1 : F Unit_hp = F False_hp)
+  : WeaklyConstant F
+  := fun B C => (WeaklyConstant_HProp_to_stable_paths F s h1 B)
+                  @ (WeaklyConstant_HProp_to_stable_paths F s h1 C)^.
+
+Definition searchable_HProp `{Univalence} : searchable HProp.
+  intro p.
+  remember (p Unit_hp) as b eqn:r; induction b.
+  - exact (False_hp; fun h a => (WeaklyConstant_HProp_to_stable_paths p _ (r @ h^) a) @ r).
+  - exact (Unit_hp; fun h => Empty_rec (true_ne_false (h^ @ r))).
 Defined.
