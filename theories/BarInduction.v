@@ -1,10 +1,6 @@
 Require Import Basics Types.
-Require Import Truncations.Core.
 Require Import Spaces.Nat.Core.
-Require Import Basics Types.
-Require Import Truncations.Core.
-Require Import Spaces.Nat.Core.
-Require Import Spaces.Finite.FinNat Spaces.Finite.FinSeq.
+Require Import Spaces.Finite.FinNat.
 Require Import NatSeq.
 Require Import ExcludedMiddle.
 Require Import Spaces.List.Core Spaces.List.Paths Spaces.List.Theory.

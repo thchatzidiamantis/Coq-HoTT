@@ -1,6 +1,5 @@
 Require Import Basics Types.
 Require Import Truncations.Core.
-Require Import Spaces.Nat.Core.
 Require Import CompactTypes.
 Require Import Universes.TruncType Universes.HProp.
 

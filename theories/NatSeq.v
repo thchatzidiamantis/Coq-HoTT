@@ -2,8 +2,6 @@ Require Import Basics Types.
 Require Import Truncations.Core.
 Require Import Spaces.Nat.Core.
 Require Import Basics Types.
-Require Import Truncations.Core.
-Require Import Spaces.Nat.Core.
 
 Open Scope nat_scope.
 Open Scope type_scope.

@@ -1,10 +1,7 @@
 Require Import Basics Types.
-Require Import Truncations.Core.
+Require Import Truncations.Core Truncations.Connectedness.
 Require Import Spaces.Nat.Core.
-Require Import Spaces.Cantor.
 Require Import NatSeq.
-Require Import Modalities.ReflectiveSubuniverse.
-Require Import Truncations.Connectedness.
 Require Import Homotopy.Suspension.
 Require Import Pointed.
 Require Import Universes.TruncType Universes.HSet.
