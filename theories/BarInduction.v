@@ -65,37 +65,37 @@ Definition entry_restrict {A : Type} (s : nat -> A) (n : nat) i {Hi : (i < n)%na
   := entry_Build_Vector _ _.
 
 (** Restrict an infinite sequence to a finite sequence represented by a list. *)
-Definition restrict' {A : Type} (s : nat -> A) (n : nat) : list A
+Definition list_restrict {A : Type} (s : nat -> A) (n : nat) : list A
   := Build_list n (fun m _ => s m).
 
-Definition restrict'_length {A : Type} (s : nat -> A) (n : nat)
-  : length (restrict' s n) = n
+Definition list_restrict_length {A : Type} (s : nat -> A) (n : nat)
+  : length (list_restrict s n) = n
   := length_Build_list _ _.
 
-Definition restrict'_length_2 {A : Type} (s t : nat -> A) (n : nat)
-  : length (restrict' s n) = length (restrict' t n)
-  := (restrict'_length s n) @ (restrict'_length t n)^.
+Definition list_restrict_length' {A : Type} (s t : nat -> A) (n : nat)
+  : length (list_restrict s n) = length (list_restrict t n)
+  := (list_restrict_length s n) @ (list_restrict_length t n)^.
 
-Definition restrict'_length_path {A : Type} (s : nat -> A) {m n : nat} (h : m = n)
-  : restrict' s m = restrict' s n
+Definition list_restrict_length_path {A : Type} (s : nat -> A) {m n : nat} (h : m = n)
+  : list_restrict s m = list_restrict s n
   := match h with idpath => idpath end.
 
 (* This has been copied from vectors, can it be simplified? *)
-Definition entry_restrict' {A : Type} (s : nat -> A) (n : nat)
+Definition entry_list_restrict {A : Type} (s : nat -> A) (n : nat)
   {i : nat} (Hi : i < n)
-  : nth' (restrict' s n) i ((restrict'_length s n)^ # Hi) = s i.
+  : nth' (list_restrict s n) i ((list_restrict_length s n)^ # Hi) = s i.
 Proof.
   snrefine (nth'_list_map _ _ _ (_^ # Hi) _ @ _).
   - nrapply length_seq'.
   - exact (ap s (nth'_seq' _ _ _)).
 Defined.
 
-Definition entry_restrict'_2 {A : Type} (s : nat -> A) (n : nat)
-  {i : nat} (Hi : i < length (restrict' s n))
-  : nth' (restrict' s n) i Hi = s i.
+Definition entry_list_restrict' {A : Type} (s : nat -> A) (n : nat)
+  {i : nat} (Hi : i < length (list_restrict s n))
+  : nth' (list_restrict s n) i Hi = s i.
 Proof.
   snrefine (nth'_list_map _ _ _ (_^ # Hi) _ @ _).
-  - nrapply ((length_seq' n) @ (restrict'_length s n)^).
+  - nrapply ((length_seq' n) @ (list_restrict_length s n)^).
   - exact (ap s (nth'_seq' _ _ _)).
 Defined.
 
@@ -172,35 +172,36 @@ Definition seq_agree_iff_res {A : Type} {n : nat} {u v : nat -> A}
   : (u =[n] v) <-> restrict u n = restrict v n
   := (fun h => res_seq_agree h, fun h => seq_agree_res h).
 
-Definition restrict_eq_iff' {A : Type} {n : nat} {s t : nat -> A}
-  : (restrict' s n = restrict' t n) <-> (forall (m : nat), m < n -> s m = t m).
+Definition list_restrict_eq_iff {A : Type} {n : nat} {s t : nat -> A}
+  : (list_restrict s n = list_restrict t n) <-> (forall (m : nat), m < n -> s m = t m).
 Proof.
   constructor.
   - intros h m hm.
-    lhs srapply (entry_restrict' s n hm)^.
-    rhs srapply (entry_restrict' t n hm)^.
+    lhs srapply (entry_list_restrict s n hm)^.
+    rhs srapply (entry_list_restrict t n hm)^.
     exact (nth'_path_list' h _ _).
   - intro h.
-    apply (path_list_nth' _ _ (restrict'_length_2 s t n)).
+    apply (path_list_nth' _ _ (list_restrict_length' s t n)).
     intros i Hi.
-    lhs srapply (entry_restrict'_2 s n _).
-    rhs srapply (entry_restrict'_2 t n _).
-    exact (h i ((restrict'_length s n) # Hi)).
+    lhs srapply (entry_list_restrict' s n _).
+    rhs srapply (entry_list_restrict' t n _).
+    exact (h i ((list_restrict_length s n) # Hi)).
 Defined.
 
 Definition seq_agree_iff_res' {A : Type} {n : nat} {s t : nat -> A}
-  : restrict' s n = restrict' t n <-> (s =[n] t)
-  := iff_compose restrict_eq_iff' us_sequense_eq_iff.
+  : list_restrict s n = list_restrict t n <-> (s =[n] t)
+  := iff_compose list_restrict_eq_iff us_sequense_eq_iff.
 
 (** * Bar Induction. *)
 
 (** A family [B] on a type of lists is a bar if every infinite sequence restricts to a finite sequence in [B]. *)
 Definition is_bar {A : Type} (B : list A -> Type)
-  := forall (s : nat -> A), {n : nat & B (restrict' s n)}.
+  := forall (s : nat -> A), {n : nat & B (list_restrict s n)}.
 
 (** A bar is uniform if there is an upper bound for the length of restrictions of infinite sequences in it. *)
 Definition is_uniform_bar {A : Type} (B : list A -> Type)
-  := {M : nat & forall (s : nat -> A), {n : (FinNat M) & B (restrict' s n.1)}}.
+  := {M : nat & forall (s : nat -> A), 
+                  {n : (FinNat M) & B (list_restrict s n.1)}}.
 
 (** A family [B] on a type of finite sequences is a bar if, for every list, concatenations with any term being in [B] implies that the list is in [B]. *)
 Definition is_inductive {A : Type} (B : list A -> Type)
@@ -308,7 +309,7 @@ Proof.
   - exists 1.
     exact (p, idpath).
   - exists 0.
-    rewrite (length_0 _ (restrict'_length s 0)).
+    rewrite (length_0 _ (list_restrict_length s 0)).
     exact (inr (fun (u : forall a, P a) => p' (u (s 0)))).
 Defined.
 
@@ -338,7 +339,7 @@ Proof.
   intro s.
   destruct (dec (s 0)) as [p|p'].
   - exists 0.
-    rewrite (length_0 _ (restrict'_length s 0)).
+    rewrite (length_0 _ (list_restrict_length s 0)).
     exact (inl (s 0; p)).
   - exists 1.
     exact (p', idpath).
@@ -411,7 +412,7 @@ Admitted.
 Definition uq_theorem_family {A : Type} (p : (nat -> A) -> Bool)
   : list A -> Type
   := fun l =>
-      (forall (u v : nat -> A) (h : restrict' u (length l) = l),
+      (forall (u v : nat -> A) (h : list_restrict u (length l) = l),
         u =[length l] v -> p u = p v).
 
 Definition is_bar_uq_theorem_family {A : Type}
@@ -423,7 +424,7 @@ Proof.
   exists conn.1.
   unfold uq_theorem_family.
   intros u v h t.
-  rewrite (restrict'_length) in h, t.
+  rewrite (list_restrict_length) in h, t.
   pose (y := us_symmetric conn.1 _ _ ((fst seq_agree_iff_res') h)).
   pose (y' := us_transitive conn.1 _ _ _ y t).
   exact ((conn.2 _ y)^ @ (conn.2 _ y')).
@@ -440,7 +441,7 @@ Proof.
   exists fanapp.1.
   intros u v h.
   apply (fanapp.2 u).2.
-  - exact (restrict'_length_path _ (restrict'_length _ _)).
-  - rewrite restrict'_length.
+  - exact (list_restrict_length_path _ (list_restrict_length _ _)).
+  - rewrite list_restrict_length.
     exact ((us_rel_leq (_ (fanapp.2 u).1.2) h)).
 Defined.
