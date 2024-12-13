@@ -43,7 +43,7 @@ Definition head {X : Type} (u : nat -> X) : X := u 0.
 (** Shift of a sequence by 1 to the left. *)
 Definition tail {X : Type} (u : nat -> X) : (nat -> X) := u o S.
 
-(** Add an term to the start of a sequence. *)
+(** Add a term to the start of a sequence. *)
 Definition cons {X : Type} : X -> (nat -> X) -> (nat -> X).
 Proof.
   intros x u [|n].
@@ -84,8 +84,8 @@ Global Instance us_sequence_type {X : Type} : UStructure (nat -> X).
 Proof.
   snrapply Build_UStructure.
   - exact seq_agree_on.
-  - intros n u ; apply (seq_agree_homotopic).
-    reflexivity.
+  - intros n u.
+    by apply (seq_agree_homotopic).
   - induction n.
     + exact (fun _ _ _ => tt).
     + exact (fun _ _ h => ((fst h)^, IHn _ _ (snd h))).
@@ -103,6 +103,7 @@ Definition cons_of_eq {X : Type} {n : nat} {u v : nat -> X} {x : X}
   : (cons x u) =[n.+1] (cons x v)
   := (idpath, h).
 
+(** Two sequences are related in the above sense if and only if the corresponding terms up to the corresponding number n are equal. *)
 Definition us_sequense_eq_iff_1 {X : Type} {n : nat} {s t : nat -> X}
   : s =[n] t -> (forall (m : nat), m < n -> s m = t m).
 Proof.
@@ -133,30 +134,36 @@ Definition us_sequense_eq_iff {X : Type} {n : nat} {s t : nat -> X}
 Definition is_continuous
   {X Y : Type} {usX : UStructure X} {usY : UStructure Y} (p : X -> Y)
   := forall (u : X) (m : nat),
-      exists n : nat,
-        forall v : X, (u =[n] v) -> p u =[m] p v.
-
-(** Uniform continuity is temporarily only defined with one uniform structure to not break the CompactTypes file. *)
-Definition is_modulus_of_uniform_continuity
-  {X Y : Type} {usX : UStructure X} (n : nat) (p : X -> Y)
-  := forall u v : X, u =[n] v -> p u = p v.
+      {n : nat & forall v : X, (u =[n] v) -> p u =[m] p v}.
 
 Definition is_uniformly_continuous {X Y : Type}
   {usX : UStructure X} (p : X -> Y)
-  := {n : nat & is_modulus_of_uniform_continuity n p}.
+  := forall (m : nat),
+      {n : nat & forall u v : X, (u =[n] v) -> p u =[m] p v}.
 
-Definition is_uniformly_continuous_is_continuous {X Y : Type}
+(** In the case that the target has the trivial uniform structure, it is useful (for now) to state uniform continuity by providing the specific modulus, which now only depends on the function. I might change the CompactTypes file instead.  *)
+Definition is_modulus_of_uniform_continuity {X Y : Type} {usX : UStructure X}
+  (n : nat) (p : X -> Y)
+  := forall u v : X, (u =[n] v) -> p u = p v.
+
+Definition is_u_continuous_has_modulus {X Y :Type} {usX : UStructure X}
+  {p : X -> Y} {n : nat} (c : is_modulus_of_uniform_continuity n p)
+  : is_uniformly_continuous p
+  := fun m => (n; c).
+
+Definition is_continuous_is_uniformly_continuous {X Y : Type}
   {usX : UStructure X} (p : X -> Y)
   : is_uniformly_continuous p -> is_continuous p
-  := fun uc u m => (uc.1 ; fun v => uc.2 u v).
+  := fun uc u m => ((uc m).1 ; fun v => (uc m).2 u v).
 
 (** A uniformly continuous function takes homotopic sequences to equal outputs. *)
 Definition uniformly_continuous_extensionality
   {X Y : Type} (p : (nat -> X) -> Y) (hp : is_uniformly_continuous p)
   {u v : nat -> X} (h : u == v)
   : p u = p v
-  := (hp.2 u v (seq_agree_homotopic h)).
+  := ((hp 1).2 u v (seq_agree_homotopic h)).
 
+(** Composing a uniformly continuous function with the [cons] operation decreases the modulus by 1. I think this can be done with greater generality for the structure on Y. *)
 Definition cons_decreases_modulus {X Y : Type}
   (p : (nat -> X) -> Y) (n : nat) (b : X)
   (hSn : is_modulus_of_uniform_continuity n.+1 p)
