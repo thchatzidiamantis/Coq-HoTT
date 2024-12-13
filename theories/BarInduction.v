@@ -415,7 +415,7 @@ Definition uq_theorem_family {A : Type} (p : (nat -> A) -> Bool)
         u =[length l] v -> p u = p v).
 
 Definition is_bar_uq_theorem_family {A : Type}
-  (p : (nat -> A) -> Bool) (conn : is_continuous p)
+  (p : (nat -> A) -> Bool) (conn : IsContinuous p)
   : is_bar (uq_theorem_family p).
 Proof.
   intro s.
@@ -433,8 +433,8 @@ Defined.
 Current proof uses the full fan theorem. Less powerful versions might be enough. *)
 
 Definition uq_theorem {A : Type} (fan : fan_theorem A)
-  (p : (nat -> A) -> Bool) (conn : is_continuous p)
-  : is_uniformly_continuous p.
+  (p : (nat -> A) -> Bool) (conn : IsContinuous p)
+  : uniformly_continuous p.
 Proof.
   pose (fanapp := fan (uq_theorem_family p) (is_bar_uq_theorem_family p conn)).
   exists fanapp.1.

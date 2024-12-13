@@ -30,9 +30,10 @@ Definition WeaklyConstant_HProp_to_stable_paths' `{Univalence} {A : Type}
   := fun B C => (WeaklyConstant_HProp_to_stable_paths F s h1 B)
                   @ (WeaklyConstant_HProp_to_stable_paths F s h1 C)^.
 
-Definition searchable_HProp `{Univalence} : searchable HProp.
+Definition searchable_HProp `{Univalence} : IsSearchable HProp.
   intro p.
   remember (p Unit_hp) as b eqn:r; induction b.
-  - exact (False_hp; fun h a => (WeaklyConstant_HProp_to_stable_paths p _ (r @ h^) a) @ r).
+  - exact (False_hp; fun h a =>
+                     (WeaklyConstant_HProp_to_stable_paths p _ (r @ h^) a) @ r).
   - exact (Unit_hp; fun h => Empty_rec (true_ne_false (h^ @ r))).
 Defined.

@@ -129,12 +129,12 @@ Definition us_sequense_eq_iff {X : Type} {n : nat} {s t : nat -> X}
   := (fun h => us_sequense_eq_iff_2 h, fun h => us_sequense_eq_iff_1 h).
 
 (** Definition of a continuous function depending on two uniform structures. *)
-Definition is_continuous
+Definition IsContinuous
   {X Y : Type} {usX : UStructure X} {usY : UStructure Y} (p : X -> Y)
   := forall (u : X) (m : nat),
       {n : nat & forall v : X, (u =[n] v) -> p u =[m] p v}.
 
-Definition is_uniformly_continuous {X Y : Type}
+Definition uniformly_continuous {X Y : Type}
   {usX : UStructure X} (p : X -> Y)
   := forall (m : nat),
       {n : nat & forall u v : X, (u =[n] v) -> p u =[m] p v}.
@@ -144,19 +144,19 @@ Definition is_modulus_of_uniform_continuity {X Y : Type} {usX : UStructure X}
   (n : nat) (p : X -> Y)
   := forall u v : X, (u =[n] v) -> p u = p v.
 
-Definition is_u_continuous_has_modulus {X Y :Type} {usX : UStructure X}
+Definition uniformly_continuous_has_modulus {X Y :Type} {usX : UStructure X}
   {p : X -> Y} {n : nat} (c : is_modulus_of_uniform_continuity n p)
-  : is_uniformly_continuous p
+  : uniformly_continuous p
   := fun m => (n; c).
 
-Definition is_continuous_is_uniformly_continuous {X Y : Type}
+Definition iscontinuous_uniformly_continuous {X Y : Type}
   {usX : UStructure X} (p : X -> Y)
-  : is_uniformly_continuous p -> is_continuous p
+  : uniformly_continuous p -> IsContinuous p
   := fun uc u m => ((uc m).1 ; fun v => (uc m).2 u v).
 
 (** A uniformly continuous function takes homotopic sequences to equal outputs. *)
 Definition uniformly_continuous_extensionality
-  {X Y : Type} (p : (nat -> X) -> Y) (hp : is_uniformly_continuous p)
+  {X Y : Type} (p : (nat -> X) -> Y) (hp : uniformly_continuous p)
   {u v : nat -> X} (h : u == v)
   : p u = p v
   := ((hp 1).2 u v (seq_agree_homotopic h)).
