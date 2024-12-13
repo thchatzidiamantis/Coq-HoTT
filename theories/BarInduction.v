@@ -14,16 +14,12 @@ Open Scope nat_scope.
 Open Scope type_scope.
 Open Scope list_scope.
 
-(** Want to prove:
+(** Left to prove:
 - LEM => BI
-- Monotone BI => FAN
-- BI => LLPO
-- FAN Bool <=> is_searchable Cantor
+- Monotone BI => FAN *)
 
-- Lots of rewrites, get rid of them. *)
-
-(** These next two are just the parts that make up Build_Vector. *)
-Definition Build_list {A : Type} (n : nat) (f : forall (i : nat), (i < n)%nat -> A)
+(** Converting a finite sequence into a list. This is taken from Build_Vector. *)
+Definition Build_list {A : Type} (n : nat) (f : forall (i : nat), (i < n) -> A)
   : list A
   := list_map (fun '(i; Hi) => f i Hi) (seq' n).
 
@@ -33,9 +29,9 @@ Definition length_Build_list {A : Type} (n : nat)
 Proof.
   lhs nrapply length_list_map.
   apply length_seq'.
-Admitted.
+Defined.
 
-(** Converse to path_vector *)
+(** Converse to path_vector: equal vectors have the same entries. *)
 Definition vector_path {A : Type} {n : nat} {v1 v2 : Vector A n}
   (h : v1 = v2) (i : nat) (H : i < n)
   : entry v1 i = entry v2 i
@@ -45,8 +41,9 @@ Definition empty_Vector (A : Type) : Vector A 0 := (nil; idpath).
 
 Definition empty_if_length_0 {A : Type} (v : Vector A 0)
   : v = empty_Vector A
-  := path_vector _ _ _ (fun i Hi => Empty_rect (fun _ => _) (not_lt_zero_r i Hi)).
+  := path_vector _ _ _ (fun i Hi => Empty_rec (not_lt_zero_r i Hi)).
 
+(** Concatenation of vectors. *)
 Definition Vector_app {A : Type} {m n : nat} (u : Vector A m) (v : Vector A n)
   : Vector A (m + n).
 Proof.
@@ -54,21 +51,6 @@ Proof.
   lhs nrapply length_app.
   exact (ap011 _ u.2 v.2).
 Defined.
-
-Definition app_empty_empty (A : Type)
-  : Vector_app (empty_Vector A) (empty_Vector A) = empty_Vector A
-  := idpath.
-
-(** I cannot do this for w ++ empty, because the lengths don't work definitionally. *)
-Definition app_empty {A : Type} {n : nat} (v : Vector A n)
-  : Vector_app (empty_Vector A) v = v.
-Proof.
-  apply path_vector.
-  induction n.
-  - rewrite (empty_if_length_0 v).
-    reflexivity.
-  - admit.
-Admitted.
 
 Definition term_to_Vector {A : Type} (a : A) : Vector A 1
   := Build_Vector A 1 (fun _ _ => a).
@@ -78,7 +60,7 @@ Definition append {A : Type} {n : nat} (s : Vector A n) (a : A)
   : Vector A (n + 1)
   := Vector_app s (term_to_Vector a).
 
-(** Restrict an infinite sequence to be a finite sequence. *)
+(** Restrict an infinite sequence to a finite sequence represented by a vector. *)
 Definition restrict {A : Type} (s : nat -> A) (n : nat) : Vector A n
   := Build_Vector A n (fun m _ => s m).
 
@@ -86,6 +68,7 @@ Definition entry_restrict {A : Type} (s : nat -> A) (n : nat) i {Hi : (i < n)%na
   : entry (restrict s n) i = s i
   := entry_Build_Vector _ _.
 
+(** Restrict an infinite sequence to a finite sequence represented by a list. *)
 Definition restrict' {A : Type} (s : nat -> A) (n : nat) : list A
   := Build_list n (fun m _ => s m).
 
@@ -135,6 +118,7 @@ Proof.
     exact (h i Hi).
 Defined.
 
+(** Two equal lists have the same elements in the same positions. *)
 Definition nth'_path_list {A : Type} {l1 l2 : list A}
   (p : l1 = l2) {n : nat} (Hn : n < length l1)
   : nth' l1 n Hn = nth' l2 n ((ap _ p) # Hn)
@@ -157,7 +141,6 @@ Proof.
   lhs nrapply entry_restrict; rhs nrapply entry_restrict.
   unfold NatSeq.tail.
   pose (h' := vector_path h i.+1 _).
-  (* Get rid of the rewrite. *)
   repeat rewrite entry_restrict in h'.
   exact h'.
 Defined.
@@ -172,14 +155,8 @@ Proof.
     + unfold NatSeq.head.
       exact (fst (restrict_eq_iff) h 0 _).
     + exact (IHn _ _ (restrict_tail_eq h)).
-    (* + rapply (h (0 ; _)).
-      exact _.
-    + apply IHn.
-      intros (k , hk).
-      exact (h (k.+1 ; lt_succ hk)). *)
 Defined.
 
-(* One place where vectors will be important: Lists of the same length with the same entries are the same. *)
 Definition res_seq_agree {A : Type} {n : nat} {u v : nat -> A}
   (h : u =[n] v)
   : restrict u n = restrict v n.
@@ -188,19 +165,11 @@ Proof.
   intros i Hi.
   induction n in u, v, h, i, Hi |-*.
   - contradiction (not_lt_zero_r _ Hi).
-  (* lemma: restrictions have the same entries in compatible places. *)
   - lhs srapply entry_restrict; rhs srapply entry_restrict; induction i.
     + exact (fst h).
     + pose (ih := IHn (NatSeq.tail u) (NatSeq.tail v) (snd h) i _).
-      (* Get rid of the rewrite. *)
       repeat rewrite entry_restrict in ih.
       rapply ih.
-  (* intros (m , hm).
-  induction n in u, v, m, h, hm |-*.
-  - contradiction (not_lt_zero_r _ hm).
-  - induction m in u, v, h, hm |-*.
-    + exact (fst h).
-    + rapply (IHn (tail u) (tail v) (snd h)). *)
 Defined.
 
 Definition seq_agree_iff_res {A : Type} {n : nat} {u v : nat -> A}
@@ -227,21 +196,42 @@ Definition seq_agree_iff_res' {A : Type} {n : nat} {s t : nat -> A}
   : restrict' s n = restrict' t n <-> (s =[n] t)
   := iff_compose restrict_eq_iff' us_sequense_eq_iff.
 
+(** * Bar Induction. *)
+
+(** A family [B] on a type of lists is a bar if every infinite sequence restricts to a finite sequence in [B]. *)
 Definition is_bar {A : Type} (B : list A -> Type)
   := forall (s : nat -> A), {n : nat & B (restrict' s n)}.
 
+(** A bar is uniform if there is an upper bound for the length of restrictions of infinite sequences in it. *)
 Definition is_uniform_bar {A : Type} (B : list A -> Type)
   := {M : nat & forall (s : nat -> A), {n : (FinNat M) & B (restrict' s n.1)}}.
 
+(** A family [B] on a type of finite sequences is a bar if, for every list, concatenations with any term being in [B] implies that the list is in [B]. *)
 Definition is_inductive {A : Type} (B : list A -> Type)
-  := forall (l : list A), (forall (a : A), B (a::l)) -> B l.
+  := forall (l : list A), (forall (a : A), B (l++[a])) -> B l.
 
+(** A family [B] on a type of finite sequences is monotone if for every list in [B] concatenations with any other lists are still in [B]. Equivalently, we can just check for concatenations with terms. *)
 Definition is_monotone {A : Type} (B : forall (l : list A), Type)
   := forall (l1 l2 : list A), B l1 -> B (l1++l2).
 
+Definition is_monotone' {A : Type} (B : forall (l : list A), Type)
+  := forall (l: list A) (a : A), B l -> B (l++[a]).
+
+Definition is_monotone'_is_monotone {A : Type} (B : forall (l : list A), Type)
+  (mon : is_monotone' B)
+  : is_monotone B.
+Proof.
+  intros l1 l2; induction l2 in l1 |-*.
+  - by rewrite app_nil.
+  - intro h.
+    pose (ih := IHl2 (l1++[a]) (mon l1 a h)).
+    by rewrite <- app_assoc in ih.
+Defined.
+
+(** We state three forms of bar induction. Monotone bar induction implies decidable bar induction and full bar induction implies both others. *)
+
 Definition decidable_bar_induction (A : Type) :=
   forall (B : list A -> Type)
-  (* (isprop : forall {n : nat} (s : Vector A n), IsHProp (B s)) *)
   (dec : forall (l : list A), Decidable (B l))
   (ind : is_inductive B)
   (bar : is_bar B),
@@ -254,19 +244,20 @@ Definition monotone_bar_induction (A : Type) :=
   (bar : is_bar B),
   B (nil).
 
+Definition bar_induction (A : Type) :=
+  forall (B : list A -> Type)
+  (ind : is_inductive B)
+  (bar : is_bar B),
+  B (nil).
+
+(** Monotone and full bar induction can be more generally stated for two families. The definitions are equivalent. *)
+
 Definition monotone_bar_induction' (A : Type) :=
   forall (B C : list A -> Type)
   (sub : forall l : list A, C l -> B l)
   (monC : is_monotone C)
   (indB : is_inductive B)
   (barC : is_bar C),
-  B (nil).
-
-(** The statement that the type [A] satisfies bar induction. *)
-Definition bar_induction (A : Type) :=
-  forall (B : list A -> Type)
-  (ind : is_inductive B)
-  (bar : is_bar B),
   B (nil).
 
 Definition bar_induction' (A : Type) :=
@@ -280,35 +271,41 @@ Definition bar_induction'_bar_induction (A : Type) (BI : bar_induction A)
   : bar_induction' A
   := fun B C sub indB barC => BI B indB (fun s => ((barC s).1; sub _ (barC s).2)).
 
-Definition monotone_bar_induction_iff (A : Type)
+Definition monotone_bar_induction_iff (A : pType)
   : monotone_bar_induction A -> monotone_bar_induction' A.
 Proof.
   intro BI.
   intros B C sub monC indB barC.
   pose (P := fun v => forall w, B (v++w)).
   assert (barP : is_bar P).
-  - intro s; exact ((barC s).1; fun _ => sub _ (monC _ _ (barC s).2)).
-  - assert (indP : is_inductive P).
-    + exact (fun _ H _ => indB _ (fun a => H a _)).
-    + assert (monP : is_monotone P).
-      * intros u v H w.
-        rewrite <- app_assoc.
-        exact (H (v++w)).
-      * exact (BI P monP indP barP nil).
+  1: intro s; exact ((barC s).1; fun _ => sub _ (monC _ _ (barC s).2)).
+  assert (indP : is_inductive P).
+  (* I'm sure this can be faster. *)
+  - intros l1 H l2; induction l2.
+    + apply indB.
+      intro a.
+      specialize (H a nil).
+      by rewrite app_nil; rewrite app_nil in H.
+    + specialize (H a l2).
+      by rewrite <- app_assoc in H.
+  - assert (monP : is_monotone P).
+    + intros u v H w.
+      by rewrite <- app_assoc.
+    + exact (BI P monP indP barP nil).
 Defined.
 
-(*** Bar induction implies bad things. *)
+(** * Full bar induction for a type implies that it is compact.  *)
 
-Definition BI_Kleene_family {A : Type} (P : A -> Type) (l : list A)
+Definition BI_pi_family {A : Type} (P : A -> Type) (l : list A)
   : Type
   := match l with
       | nil => Decidable (forall a, P a)
       | n :: l' => (P n) * (length l' = 0)
      end.
 
-Definition is_bar_BI_Kleene_family {A : Type} {P : A -> Type}
+Definition is_bar_BI_pi_family {A : Type} {P : A -> Type}
   (dec : forall n : A, Decidable (P n))
-  : is_bar (BI_Kleene_family P).
+  : is_bar (BI_pi_family P).
 Proof.
   intro s.
   destruct (dec (s 0)) as [p|p'].
@@ -319,27 +316,28 @@ Proof.
     exact (inr (fun (u : forall a, P a) => p' (u (s 0)))).
 Defined.
 
-(** Can I get rid of pointedness? *)
-Definition is_inductive_BI_Kleene_family {A : pType} (P : A -> Type)
-  : is_inductive (BI_Kleene_family P).
+Definition is_inductive_BI_pi_family {A : pType} (P : A -> Type)
+  : is_inductive (BI_pi_family P).
 Proof.
   intros l h.
-  remember (length l) as m eqn:r; induction m.
-  - rewrite (length_0 l (snd (h (point A)))).
-    exact (inl (fun k => fst (h k))).
-  - contradiction (neq_nat_zero_succ m ((snd (h (point A)))^ @ r)).
+  induction l.
+  - left; exact (fun a => (fst (h a))).
+  - simpl in h.
+    pose (q := snd (h a)).
+    rewrite length_app, nat_add_comm in q; simpl in q.
+    contradiction (neq_nat_zero_succ _ q^).
 Defined.
 
-Definition BI_Kleene_family' {A : Type} (P : A -> Type) (l : list A)
+Definition BI_sig_family {A : Type} (P : A -> Type) (l : list A)
   : Type
   := match l with
       | nil => Decidable {a : A & P a}
       | n :: l' => (~(P n)) * (length l' = 0)
      end.
 
-Definition is_bar_BI_Kleene_family' {A : Type} {P : A -> Type}
+Definition is_bar_BI_sig_family {A : Type} {P : A -> Type}
   (dec : forall n : A, Decidable (P n))
-  : is_bar (BI_Kleene_family' P).
+  : is_bar (BI_sig_family P).
 Proof.
   intro s.
   destruct (dec (s 0)) as [p|p'].
@@ -350,35 +348,46 @@ Proof.
     exact (p', idpath).
 Defined.
 
-Definition is_inductive_BI_Kleene_family' {A : pType} (P : A -> Type)
-  : is_inductive (BI_Kleene_family' P).
+Definition is_inductive_BI_sig_family {A : pType} (P : A -> Type)
+  : is_inductive (BI_sig_family P).
 Proof.
   intros l h.
-  remember (length l) as m eqn:r; induction m.
-  - rewrite (length_0 l (snd (h (point A)))).
-    simpl in h; simpl.
-    exact (inr (fun k => (fst (h k.1)) k.2)).
-  - contradiction (neq_nat_zero_succ m ((snd (h (point A)))^ @ r)).
+  induction l.
+  - right. exact (fun pa => (fst (h pa.1) pa.2)).
+  - simpl in h.
+    pose (q := snd (h a)).
+    rewrite length_app, nat_add_comm in q; simpl in q.
+    contradiction (neq_nat_zero_succ _ q^).
 Defined.
 
-(** Relation to Π-compactness? *)
-Definition bar_induction_is_not_good_I_think {A : pType} (BI : bar_induction A)
+Definition is_pi_compact_bar_induction {A : pType} (BI : bar_induction A)
   {P : A -> Type} (dec : forall n : A, Decidable (P n))
   : Decidable (forall a, P a)
-  := BI (BI_Kleene_family P) 
-          (is_inductive_BI_Kleene_family P) (is_bar_BI_Kleene_family dec).
+  := BI (BI_pi_family P)
+          (is_inductive_BI_pi_family P) (is_bar_BI_pi_family dec).
 
-Definition bar_induction_is_not_good_I_think' {A : pType} (BI : bar_induction A)
-  {P : A -> Type} (dec : forall n : A, Decidable (P n))
+(** This implies the previous one because Σ-compactness implies Π-compactness. A proof of that is in [CompactTypes.v] but I have not deleted this since I do not know the best order of dependencies yet. *)
+Definition is_sig_compact_bar_induction {A : pType} (BI : bar_induction A)
+  (P : A -> Type) (dec : forall n : A, Decidable (P n))
   : Decidable {a : A & P a}
-  := BI (BI_Kleene_family' P)
-          (is_inductive_BI_Kleene_family' P) (is_bar_BI_Kleene_family' dec).
+  := BI (BI_sig_family P)
+          (is_inductive_BI_sig_family P) (is_bar_BI_sig_family dec).
 
-(*** The Fan theorem.  *)
+(** Full bar induction for [nat] implies the limited principle of omniscience, i.e., for every sequence of natural numbers we can decide whether every term is zero or there exists a non-zero term. *)
+
+Definition LPO_bar_induction {BI : bar_induction nat} (s : nat -> nat)
+  : (forall n : nat, s n = 0) + {n : nat & s n <> 0}.
+Proof.
+  destruct (@is_sig_compact_bar_induction
+              (Build_pType nat 0) BI (fun n => s n <> 0) _) as [l|r].
+  - right; exact l.
+  - left; exact (fun n => stable (fun z => r (n; z))).
+Defined.
+
+(** * The Fan theorem.  *)
 
 Definition decidable_fan_theorem (A : Type) :=
   forall (B : list A -> Type)
-  (* (isprop : forall {n : nat} (s : Vector A n), IsHProp (B s)) *)
   (dec : forall l : list A, Decidable (B l))
   (bar : is_bar B),
   is_uniform_bar B.
@@ -391,28 +400,23 @@ Definition monotone_fan_theorem (A : Type) :=
 
 Definition fan_theorem (A : Type) :=
   forall (B : list A -> Type)
-  (bar : is_bar B) ,
+  (bar : is_bar B),
   is_uniform_bar B.
-
-Definition fan_monotone_fan A (m : monotone_fan_theorem A) : fan_theorem A.
-Proof.
-  intros B bar.
-  unfold is_uniform_bar; unfold is_bar in bar.
-Admitted.
 
 Definition fan_bar_family {A : Type} (B : list A -> Type) (l : list A)
   : Type.
 Proof.
   induction l.
   - exact (is_uniform_bar B).
-  - 
+  -
 Admitted.
 
 (** The family we use to apply the fan theorem in our proof that continuity implies uniform continuity *)
 Definition uq_theorem_family {A : Type} (p : (nat -> A) -> Bool)
   : list A -> Type
   := fun l =>
-      (forall (u v : nat -> A) (h : restrict' u (length l) = l), u =[length l] v -> p u = p v).
+      (forall (u v : nat -> A) (h : restrict' u (length l) = l),
+        u =[length l] v -> p u = p v).
 
 Definition is_bar_uq_theorem_family {A : Type}
   (p : (nat -> A) -> Bool) (conn : is_continuous p)
@@ -430,9 +434,7 @@ Proof.
 Defined.
 
 (** The fan theorem implies that every continuous function is uniformly continuous.
-Current proof uses the full fan theorem. Less powerful versions might be enough, e.g. a fan theorem for predicates of type forall {n : nat} (v : Vector A n), Bool 
-
-- Is the converse true? *)
+Current proof uses the full fan theorem. Less powerful versions might be enough. *)
 
 Definition uq_theorem {A : Type} (fan : fan_theorem A)
   (p : (nat -> A) -> Bool) (conn : is_continuous p)
