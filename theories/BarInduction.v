@@ -200,7 +200,7 @@ Definition is_bar {A : Type} (B : list A -> Type)
 
 (** A bar is uniform if there is an upper bound for the length of restrictions of infinite sequences in it. *)
 Definition is_uniform_bar {A : Type} (B : list A -> Type)
-  := {M : nat & forall (s : nat -> A), 
+  := {M : nat & forall (s : nat -> A),
                   {n : (FinNat M) & B (list_restrict s n.1)}}.
 
 (** A family [B] on a type of finite sequences is inductive if, for every list, concatenations with any term being in [B] implies that the list is in [B]. *)
@@ -400,13 +400,6 @@ Definition fan_theorem (A : Type) :=
   (bar : is_bar B),
   is_uniform_bar B.
 
-Definition fan_bar_family {A : Type} (B : list A -> Type) (l : list A)
-  : Type.
-Proof.
-  induction l.
-  - exact (is_uniform_bar B).
-  -
-Admitted.
 
 (** The family we use to apply the fan theorem in our proof that continuity implies uniform continuity *)
 Definition uq_theorem_family {A : Type} (p : (nat -> A) -> Bool)
