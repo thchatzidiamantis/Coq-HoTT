@@ -387,9 +387,9 @@ Section Uniform_Search.
                           -> forall x : X, uc_char_nat n (p o (cons x)) = true).
         * exact (fun l x =>
                   eps_property (fun y => uc_char_nat n (p o (cons y))) l x).
-        * exact ((uniformly_continuous_extensionality
-                    p (uniformly_continuous_has_modulus is_mod) 
-                      (cons_head_tail u))^
+        * exact ((@uniformly_continuous_extensionality X Bool _ p 0
+                    (uniformly_continuous_has_modulus is_mod) 
+                      _ _ (cons_head_tail u))^
                   @ (consprop (head u) (x1prop h (head u)) (tail u))).
   Defined.
 

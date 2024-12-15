@@ -72,7 +72,8 @@ Proof.
   intro h.
   induction n in s, t, h |- *.
   - exact tt.
-  - exact ((h 0 _), (IHn _ _ (fun m hm => h _ (_ hm)))).
+  - simpl.
+    exact (h 0 _, IHn _ _ (fun m hm => h _ (_ hm))).
 Defined.
 
 Definition seq_agree_homotopic {X : Type} {n : nat}
@@ -97,7 +98,7 @@ Proof.
   snrapply Build_UStructure.
   - exact seq_agree_on.
   - intros n u.
-    by apply (seq_agree_homotopic).
+    by apply seq_agree_homotopic.
   - induction n.
     + exact (fun _ _ _ => tt).
     + exact (fun _ _ h => ((fst h)^, IHn _ _ (snd h))).
@@ -145,13 +146,13 @@ Definition iscontinuous_uniformly_continuous {X Y : Type}
   : uniformly_continuous p -> IsContinuous p
   := fun uc u m => ((uc m).1 ; fun v => (uc m).2 u v).
 
-(** A uniformly continuous function takes homotopic sequences to equal outputs. Here  *)
+(** A uniformly continuous function takes homotopic sequences to outputs that are equivalent with respect to the structure on [Y]. *)
 Definition uniformly_continuous_extensionality
-  {X Y : Type} (p : (nat -> X) -> Y) {n : nat} 
-  (is_mod : is_modulus_of_uniform_continuity n p)
+  {X Y : Type} {usY : UStructure Y} (p : (nat -> X) -> Y) {m : nat} 
+  (c : uniformly_continuous p)
   {u v : nat -> X} (h : u == v)
-  : p u = p v
-  := (is_mod u v (seq_agree_homotopic h)).
+  : p u =[m] p v
+  := (c m).2 u v (seq_agree_homotopic h).
 
 (** Composing a uniformly continuous function with the [cons] operation decreases the modulus by 1. I think this can be done with greater generality for the structure on Y. *)
 Definition cons_decreases_modulus {X Y : Type}
