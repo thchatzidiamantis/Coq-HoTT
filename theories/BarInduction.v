@@ -20,7 +20,7 @@ Definition Build_list {A : Type} (n : nat) (f : forall (i : nat), (i < n) -> A)
   := list_map (fun '(i; Hi) => f i Hi) (seq' n).
 
 Definition length_Build_list {A : Type} (n : nat)
-  (f : forall (i : nat), (i < n)%nat -> A)
+  (f : forall (i : nat), (i < n) -> A)
   : length (Build_list n f) = n.
 Proof.
   lhs nrapply length_list_map.
@@ -60,7 +60,7 @@ Definition append {A : Type} {n : nat} (s : Vector A n) (a : A)
 Definition restrict {A : Type} (s : nat -> A) (n : nat) : Vector A n
   := Build_Vector A n (fun m _ => s m).
 
-Definition entry_restrict {A : Type} (s : nat -> A) (n : nat) i {Hi : (i < n)%nat}
+Definition entry_restrict {A : Type} (s : nat -> A) (n : nat) i {Hi : (i < n)}
   : entry (restrict s n) i = s i
   := entry_Build_Vector _ _.
 
@@ -75,10 +75,6 @@ Definition list_restrict_length {A : Type} (s : nat -> A) (n : nat)
 Definition list_restrict_length' {A : Type} (s t : nat -> A) (n : nat)
   : length (list_restrict s n) = length (list_restrict t n)
   := (list_restrict_length s n) @ (list_restrict_length t n)^.
-
-Definition list_restrict_length_path {A : Type} (s : nat -> A) {m n : nat} (h : m = n)
-  : list_restrict s m = list_restrict s n
-  := match h with idpath => idpath end.
 
 (* This has been copied from vectors, can it be simplified? *)
 Definition entry_list_restrict {A : Type} (s : nat -> A) (n : nat)
@@ -104,9 +100,8 @@ Definition restrict_eq_iff {A : Type} {n : nat} {u v : nat -> A}
 Proof.
   constructor.
   - intros h m hm.
-    lhs srapply (entry_restrict u n m)^; rhs srapply (entry_restrict v n m)^.
-    destruct h.
-    reflexivity.
+    lhs_V srapply (entry_restrict); rhs_V srapply (entry_restrict).
+    exact (ap (fun l => entry l m) h).
   - intro h.
     apply path_vector.
     intros i Hi.
@@ -177,14 +172,14 @@ Definition list_restrict_eq_iff {A : Type} {n : nat} {s t : nat -> A}
 Proof.
   constructor.
   - intros h m hm.
-    lhs srapply (entry_list_restrict s n hm)^.
-    rhs srapply (entry_list_restrict t n hm)^.
+    lhs_V srapply (entry_list_restrict).
+    rhs_V srapply (entry_list_restrict).
     exact (nth'_path_list' h _ _).
   - intro h.
     apply (path_list_nth' _ _ (list_restrict_length' s t n)).
     intros i Hi.
-    lhs srapply (entry_list_restrict' s n _).
-    rhs srapply (entry_list_restrict' t n _).
+    lhs srapply (entry_list_restrict').
+    rhs srapply (entry_list_restrict' t).
     exact (h i ((list_restrict_length s n) # Hi)).
 Defined.
 
@@ -208,13 +203,13 @@ Definition is_inductive {A : Type} (B : list A -> Type)
   := forall (l : list A), (forall (a : A), B (l++[a])) -> B l.
 
 (** A family [B] on a type of finite sequences is monotone if for every list in [B] concatenations with any other lists are still in [B]. Equivalently, we can just check for concatenations with terms. *)
-Definition is_monotone {A : Type} (B : forall (l : list A), Type)
+Definition is_monotone {A : Type} (B : list A -> Type)
   := forall (l1 l2 : list A), B l1 -> B (l1++l2).
 
-Definition is_monotone' {A : Type} (B : forall (l : list A), Type)
-  := forall (l: list A) (a : A), B l -> B (l++[a]).
+Definition is_monotone' {A : Type} (B : list A ->Type)
+  := forall (l : list A) (a : A), B l -> B (l++[a]).
 
-Definition is_monotone'_is_monotone {A : Type} (B : forall (l : list A), Type)
+Definition is_monotone'_is_monotone {A : Type} (B : list A -> Type)
   (mon : is_monotone' B)
   : is_monotone B.
 Proof.
@@ -232,20 +227,20 @@ Definition decidable_bar_induction (A : Type) :=
   (dec : forall (l : list A), Decidable (B l))
   (ind : is_inductive B)
   (bar : is_bar B),
-  B (nil).
+  B nil.
 
 Definition monotone_bar_induction (A : Type) :=
   forall (B : list A -> Type)
   (mon : is_monotone B)
   (ind : is_inductive B)
   (bar : is_bar B),
-  B (nil).
+  B nil.
 
 Definition bar_induction (A : Type) :=
   forall (B : list A -> Type)
   (ind : is_inductive B)
   (bar : is_bar B),
-  B (nil).
+  B nil.
 
 (** Monotone and full bar induction can be more generally stated for two families. The definitions are equivalent. *)
 
@@ -255,20 +250,20 @@ Definition monotone_bar_induction' (A : Type) :=
   (monC : is_monotone C)
   (indB : is_inductive B)
   (barC : is_bar C),
-  B (nil).
+  B nil.
 
 Definition bar_induction' (A : Type) :=
   forall (B C : list A -> Type)
   (sub : forall l : list A, C l -> B l)
   (indB : is_inductive B)
   (barC : is_bar C),
-  B (nil).
+  B nil.
 
 Definition bar_induction'_bar_induction (A : Type) (BI : bar_induction A)
   : bar_induction' A
   := fun B C sub indB barC => BI B indB (fun s => ((barC s).1; sub _ (barC s).2)).
 
-Definition monotone_bar_induction_iff (A : pType)
+Definition monotone_bar_induction_montone_bar_induction' (A : Type)
   : monotone_bar_induction A -> monotone_bar_induction' A.
 Proof.
   intro BI.
@@ -402,20 +397,20 @@ Definition fan_theorem (A : Type) :=
 
 
 (** The family we use to apply the fan theorem in our proof that continuity implies uniform continuity *)
-Definition uq_theorem_family {A : Type} (p : (nat -> A) -> Bool)
+Definition uc_theorem_family {A : Type} (p : (nat -> A) -> Bool)
   : list A -> Type
   := fun l =>
       (forall (u v : nat -> A) (h : list_restrict u (length l) = l),
         u =[length l] v -> p u = p v).
 
-Definition is_bar_uq_theorem_family {A : Type}
+Definition is_bar_uc_theorem_family {A : Type}
   (p : (nat -> A) -> Bool) (conn : IsContinuous p)
-  : is_bar (uq_theorem_family p).
+  : is_bar (uc_theorem_family p).
 Proof.
   intro s.
   specialize (conn s 1).
   exists conn.1.
-  unfold uq_theorem_family.
+  unfold uc_theorem_family.
   intros u v h t.
   rewrite (list_restrict_length) in h, t.
   pose (y := us_symmetric conn.1 _ _ ((fst seq_agree_iff_res') h)).
@@ -426,15 +421,15 @@ Defined.
 (** The fan theorem implies that every continuous function is uniformly continuous.
 Current proof uses the full fan theorem. Less powerful versions might be enough. *)
 
-Definition uq_theorem {A : Type} (fan : fan_theorem A)
+Definition uniform_continuity_fan_theorem {A : Type} (fan : fan_theorem A)
   (p : (nat -> A) -> Bool) (conn : IsContinuous p)
   : uniformly_continuous p.
 Proof.
-  pose (fanapp := fan (uq_theorem_family p) (is_bar_uq_theorem_family p conn)).
+  pose (fanapp := fan (uc_theorem_family p) (is_bar_uc_theorem_family p conn)).
   exists fanapp.1.
   intros u v h.
   apply (fanapp.2 u).2.
-  - exact (list_restrict_length_path _ (list_restrict_length _ _)).
+  - exact (ap _ (list_restrict_length _ _)).
   - rewrite list_restrict_length.
     exact ((us_rel_leq (_ (fanapp.2 u).1.2) h)).
 Defined.

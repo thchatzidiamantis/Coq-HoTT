@@ -352,8 +352,8 @@ Section Uniform_Search.
   Definition eps_property
     := witness_universality issearchable_X.
 
-  (* uq stands for uniformly continuous, I will change the names here. *)
-  Definition uq_char : (X -> Bool) -> Bool := fun p => p (eps p).
+  (* uc stands for uniformly continuous, I will change the names here. *)
+  Definition uc_char : (X -> Bool) -> Bool := fun p => p (eps p).
 
   (** The witness function for predicates on [nat -> X] (no uniform continuity required in the construction). *)
   Definition eps_nat (n : nat) : ((nat -> X) -> Bool) -> (nat -> X).
@@ -365,28 +365,28 @@ Section Uniform_Search.
       exact (cons y0 (IHn (p o cons y0))).
   Defined.
 
-  Definition uq_char_nat (n : nat) := fun p => p (eps_nat n p).
+  Definition uc_char_nat (n : nat) := fun p => p (eps_nat n p).
 
   (** The desired property of the witness function. *)
-  Definition uq_char_nat_spec_2 {n : nat} (p : (nat -> X) -> Bool)
+  Definition uc_char_nat_spec_2 {n : nat} (p : (nat -> X) -> Bool)
     (is_mod : is_modulus_of_uniform_continuity n p)
-    (h : uq_char_nat n p = true )
+    (h : uc_char_nat n p = true )
     : forall u : nat -> X, p u = true.
   Proof.
     induction n in p, is_mod, h |- *.
     - exact (fun u =>
             (is_mod u (fun _ => inhabited_issearchable issearchable_X) tt) @ h).
     - intro u.
-      pose (x1 := eps (fun y => uq_char_nat n (p o (cons y)))).
+      pose (x1 := eps (fun y => uc_char_nat n (p o (cons y)))).
       assert (consprop : forall x : X,
-                          uq_char_nat n (p o (cons x)) = true
+                          uc_char_nat n (p o (cons x)) = true
                             -> forall v : nat -> X, p (cons x v) = true).
       + exact (fun _ k =>
                 IHn (p o (cons _)) (cons_decreases_modulus p n _ is_mod) k).
-      + assert (x1prop : uq_char_nat n (p o (cons x1)) = true
-                          -> forall x : X, uq_char_nat n (p o (cons x)) = true).
+      + assert (x1prop : uc_char_nat n (p o (cons x1)) = true
+                          -> forall x : X, uc_char_nat n (p o (cons x)) = true).
         * exact (fun l x =>
-                  eps_property (fun y => uq_char_nat n (p o (cons y))) l x).
+                  eps_property (fun y => uc_char_nat n (p o (cons y))) l x).
         * exact ((uniformly_continuous_extensionality
                     p (uniformly_continuous_has_modulus is_mod) 
                       (cons_head_tail u))^
@@ -397,6 +397,6 @@ Section Uniform_Search.
     : uniformly_searchable (nat -> X)
     := fun p cont_p
         => (eps_nat (cont_p 1).1 p;
-            fun r => uq_char_nat_spec_2 p (cont_p 1).2 r).
+            fun r => uc_char_nat_spec_2 p (cont_p 1).2 r).
 
 End Uniform_Search.

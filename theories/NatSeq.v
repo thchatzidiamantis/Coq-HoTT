@@ -135,7 +135,7 @@ Definition IsContinuous
       {n : nat & forall v : X, (u =[n] v) -> p u =[m] p v}.
 
 Definition uniformly_continuous {X Y : Type}
-  {usX : UStructure X} (p : X -> Y)
+  {usX : UStructure X} {usY : UStructure Y} (p : X -> Y)
   := forall (m : nat),
       {n : nat & forall u v : X, (u =[n] v) -> p u =[m] p v}.
 
@@ -150,7 +150,7 @@ Definition uniformly_continuous_has_modulus {X Y :Type} {usX : UStructure X}
   := fun m => (n; c).
 
 Definition iscontinuous_uniformly_continuous {X Y : Type}
-  {usX : UStructure X} (p : X -> Y)
+  {usX : UStructure X} {usY : UStructure Y} (p : X -> Y)
   : uniformly_continuous p -> IsContinuous p
   := fun uc u m => ((uc m).1 ; fun v => (uc m).2 u v).
 
