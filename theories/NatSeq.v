@@ -1,7 +1,6 @@
 Require Import Basics Types.
 Require Import Truncations.Core.
 Require Import Spaces.Nat.Core.
-Require Import Basics Types.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -66,15 +65,31 @@ Proof.
   - intros u v; exact ((head u = head v) * (IHn (tail u) (tail v))).
 Defined.
 
-Definition seq_agree_homotopic {X : Type} {n : nat}
-  {u v : nat -> X} (h : u == v)
-  : seq_agree_on n u v.
+(** Two sequences are related in the above sense if and only if the corresponding terms up to the corresponding number [n] are equal. *)
+Definition seq_agree_terms {X : Type} {n : nat} {s t : nat -> X}
+  : (forall (m : nat), m < n -> s m = t m) -> seq_agree_on n s t.
 Proof.
-  induction n in u, v, h |-*.
+  intro h.
+  induction n in s, t, h |- *.
   - exact tt.
-  - split.
-    + exact (h 0).
-    + exact (IHn _ _ (fun n => h n.+1)).
+  - exact ((h 0 _), (IHn _ _ (fun m hm => h _ (_ hm)))).
+Defined.
+
+Definition seq_agree_homotopic {X : Type} {n : nat}
+  {s t : nat -> X} (h : s == t)
+  : seq_agree_on n s t
+  := seq_agree_terms (fun m _ => h m).
+
+Definition terms_seq_agree {X : Type} {n : nat} {s t : nat -> X}
+  : seq_agree_on n s t -> (forall (m : nat), m < n -> s m = t m).
+Proof.
+  intros h m hm.
+  induction m in n, s, t, h, hm |- *.
+  - revert n hm h; nrapply gt_zero_ind; intros n h.
+    exact (fst h).
+  - induction n.
+    + contradiction (not_lt_zero_r _ hm).
+    + exact (IHm _ (tail s) (tail t) (snd h) _).
 Defined.
 
 Global Instance us_sequence_type {X : Type} : UStructure (nat -> X).
@@ -100,32 +115,9 @@ Definition cons_of_eq {X : Type} {n : nat} {u v : nat -> X} {x : X}
   : (cons x u) =[n.+1] (cons x v)
   := (idpath, h).
 
-(** Two sequences are related in the above sense if and only if the corresponding terms up to the corresponding number n are equal. *)
-Definition us_sequense_eq_iff_1 {X : Type} {n : nat} {s t : nat -> X}
-  : s =[n] t -> (forall (m : nat), m < n -> s m = t m).
-Proof.
-  intros h m hm.
-  induction m in n, s, t, h, hm |-*.
-  - induction n.
-    + contradiction (not_lt_zero_r _ hm).
-    + exact (fst h).
-  - induction n.
-    + contradiction (not_lt_zero_r _ hm).
-    + exact (IHm _ (tail s) (tail t) (snd h) _).
-Defined.
-
-Definition us_sequense_eq_iff_2 {X : Type} {n : nat} {s t : nat -> X}
-  : (forall (m : nat), m < n -> s m = t m) -> s =[n] t.
-Proof.
-  intro h.
-  induction n in s, t, h |-*.
-  - exact tt.
-  - exact ((h 0 _), (IHn _ _ (fun m hm => h _ (_ hm)))).
-Defined.
-
-Definition us_sequense_eq_iff {X : Type} {n : nat} {s t : nat -> X}
+Definition iff_us_sequence_eq {X : Type} {n : nat} {s t : nat -> X}
   : (forall (m : nat), m < n -> s m = t m) <-> s =[n] t
-  := (fun h => us_sequense_eq_iff_2 h, fun h => us_sequense_eq_iff_1 h).
+  := (fun h => seq_agree_terms h, fun h => terms_seq_agree h).
 
 (** Definition of a continuous function depending on two uniform structures. *)
 Definition IsContinuous
@@ -153,12 +145,13 @@ Definition iscontinuous_uniformly_continuous {X Y : Type}
   : uniformly_continuous p -> IsContinuous p
   := fun uc u m => ((uc m).1 ; fun v => (uc m).2 u v).
 
-(** A uniformly continuous function takes homotopic sequences to equal outputs. *)
+(** A uniformly continuous function takes homotopic sequences to equal outputs. Here  *)
 Definition uniformly_continuous_extensionality
-  {X Y : Type} (p : (nat -> X) -> Y) (hp : uniformly_continuous p)
+  {X Y : Type} (p : (nat -> X) -> Y) {n : nat} 
+  (is_mod : is_modulus_of_uniform_continuity n p)
   {u v : nat -> X} (h : u == v)
   : p u = p v
-  := ((hp 1).2 u v (seq_agree_homotopic h)).
+  := (is_mod u v (seq_agree_homotopic h)).
 
 (** Composing a uniformly continuous function with the [cons] operation decreases the modulus by 1. I think this can be done with greater generality for the structure on Y. *)
 Definition cons_decreases_modulus {X Y : Type}

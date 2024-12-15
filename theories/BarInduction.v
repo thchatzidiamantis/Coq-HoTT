@@ -100,7 +100,7 @@ Definition restrict_eq_iff {A : Type} {n : nat} {u v : nat -> A}
 Proof.
   constructor.
   - intros h m hm.
-    lhs_V srapply (entry_restrict); rhs_V srapply (entry_restrict).
+    lhs_V srapply entry_restrict; rhs_V srapply entry_restrict.
     exact (ap (fun l => entry l m) h).
   - intro h.
     apply path_vector.
@@ -140,11 +140,11 @@ Definition seq_agree_res {A : Type} {n : nat} {u v : nat -> A}
   (h : restrict u n = restrict v n)
   : u =[n] v.
 Proof.
-  induction n in u, v, h |-*.
+  induction n in u, v, h |- *.
   - exact tt.
   - constructor.
     + unfold NatSeq.head.
-      exact (fst (restrict_eq_iff) h 0 _).
+      exact (fst restrict_eq_iff h 0 _).
     + exact (IHn _ _ (restrict_tail_eq h)).
 Defined.
 
@@ -172,20 +172,20 @@ Definition list_restrict_eq_iff {A : Type} {n : nat} {s t : nat -> A}
 Proof.
   constructor.
   - intros h m hm.
-    lhs_V srapply (entry_list_restrict).
-    rhs_V srapply (entry_list_restrict).
+    lhs_V srapply entry_list_restrict.
+    rhs_V srapply entry_list_restrict.
     exact (nth'_path_list' h _ _).
   - intro h.
     apply (path_list_nth' _ _ (list_restrict_length' s t n)).
     intros i Hi.
-    lhs srapply (entry_list_restrict').
+    lhs srapply entry_list_restrict'.
     rhs srapply (entry_list_restrict' t).
     exact (h i ((list_restrict_length s n) # Hi)).
 Defined.
 
 Definition seq_agree_iff_res' {A : Type} {n : nat} {s t : nat -> A}
   : list_restrict s n = list_restrict t n <-> (s =[n] t)
-  := iff_compose list_restrict_eq_iff us_sequense_eq_iff.
+  := iff_compose list_restrict_eq_iff iff_us_sequence_eq.
 
 (** * Bar Induction. *)
 
@@ -412,7 +412,7 @@ Proof.
   exists conn.1.
   unfold uc_theorem_family.
   intros u v h t.
-  rewrite (list_restrict_length) in h, t.
+  rewrite list_restrict_length in h, t.
   pose (y := us_symmetric conn.1 _ _ ((fst seq_agree_iff_res') h)).
   pose (y' := us_transitive conn.1 _ _ _ y t).
   exact ((conn.2 _ y)^ @ (conn.2 _ y')).
