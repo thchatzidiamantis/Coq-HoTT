@@ -203,7 +203,7 @@ Definition is_uniform_bar {A : Type} (B : list A -> Type)
   := {M : nat & forall (s : nat -> A), 
                   {n : (FinNat M) & B (list_restrict s n.1)}}.
 
-(** A family [B] on a type of finite sequences is a bar if, for every list, concatenations with any term being in [B] implies that the list is in [B]. *)
+(** A family [B] on a type of finite sequences is inductive if, for every list, concatenations with any term being in [B] implies that the list is in [B]. *)
 Definition is_inductive {A : Type} (B : list A -> Type)
   := forall (l : list A), (forall (a : A), B (l++[a])) -> B l.
 
