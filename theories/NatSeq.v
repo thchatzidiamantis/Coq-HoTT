@@ -21,11 +21,10 @@ Definition us_rel_leq {X : Type} {struct : UStructure X}
   {m n : nat} (hm : m <= n) {u v : X} (h : u =[n] v)
   : u =[m] v.
 Proof.
-  induction n in u, v, h, m, hm |-*.
-  - rewrite (path_zero_leq_zero_r _ hm); exact h.
-  - destruct (equiv_leq_lt_or_eq hm) as [l|r].
-    + exact (IHn _ (leq_pred' l) _ _ (us_pred _ _ _ h)).
-    + rewrite r ; exact h.
+  induction hm.
+  - assumption.
+  - apply IHhm.
+    by apply us_pred.
 Defined.
 
 (** Every type admits the trivial uniform structure with the standard identity type on every level. *)
