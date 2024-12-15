@@ -148,7 +148,7 @@ Definition iscontinuous_uniformly_continuous {X Y : Type}
 
 (** A uniformly continuous function takes homotopic sequences to outputs that are equivalent with respect to the structure on [Y]. *)
 Definition uniformly_continuous_extensionality
-  {X Y : Type} {usY : UStructure Y} (p : (nat -> X) -> Y) {m : nat} 
+  {X Y : Type} {usY : UStructure Y} (p : (nat -> X) -> Y) {m : nat}
   (c : uniformly_continuous p)
   {u v : nat -> X} (h : u == v)
   : p u =[m] p v
