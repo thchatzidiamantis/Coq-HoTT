@@ -213,11 +213,11 @@ Definition is_monotone'_is_monotone {A : Type} (B : list A -> Type)
   (mon : is_monotone' B)
   : is_monotone B.
 Proof.
-  intros l1 l2; induction l2 in l1 |-*.
+  intros l1 l2; induction l2 as [|a l2 IHl2] in l1 |- *.
   - by rewrite app_nil.
   - intro h.
-    pose (ih := IHl2 (l1++[a]) (mon l1 a h)).
-    by rewrite <- app_assoc in ih.
+    rewrite (app_assoc l1 [a] l2).
+    apply IHl2, mon, h.
 Defined.
 
 (** We state three forms of bar induction. Monotone bar induction implies decidable bar induction and full bar induction implies both others. *)
@@ -266,33 +266,35 @@ Definition bar_induction'_bar_induction (A : Type) (BI : bar_induction A)
 Definition monotone_bar_induction_montone_bar_induction' (A : Type)
   : monotone_bar_induction A -> monotone_bar_induction' A.
 Proof.
-  intro BI.
+  intro MBI.
   intros B C sub monC indB barC.
   pose (P := fun v => forall w, B (v++w)).
-  assert (barP : is_bar P).
-  1: intro s; exact ((barC s).1; fun _ => sub _ (monC _ _ (barC s).2)).
-  assert (indP : is_inductive P).
+  nrapply (MBI P).
+  - intros u v H w.
+    by rewrite <- app_assoc.
   (* I'm sure this can be faster. *)
-  - intros l1 H l2; induction l2.
+  - intros l1 H [|a l2].
     + apply indB.
       intro a.
       specialize (H a nil).
       by rewrite app_nil; rewrite app_nil in H.
     + specialize (H a l2).
       by rewrite <- app_assoc in H.
-  - assert (monP : is_monotone P).
-    + intros u v H w.
-      by rewrite <- app_assoc.
-    + exact (BI P monP indP barP nil).
+  - intro s.
+    exists (barC s).1.
+    intro w.
+    apply sub, monC, barC.
 Defined.
 
 (** * Full bar induction for a type implies that it is compact.  *)
 
+(** We will prove Pi-compactness by showing that [forall a, P a] is decidable for any decidable family [P].  We make use of the following family over [list A] which has that goal as the value at [nil]. *)
 Definition BI_pi_family {A : Type} (P : A -> Type) (l : list A)
   : Type
   := match l with
       | nil => Decidable (forall a, P a)
-      | n :: l' => (P n) * (length l' = 0)
+      | a :: nil => P a
+      | _ => Empty
      end.
 
 Definition is_bar_BI_pi_family {A : Type} {P : A -> Type}
@@ -301,25 +303,29 @@ Definition is_bar_BI_pi_family {A : Type} {P : A -> Type}
 Proof.
   intro s.
   destruct (dec (s 0)) as [p|p'].
-  - exists 1.
-    exact (p, idpath).
+  - exact (1; p).
   - exists 0.
-    rewrite (length_0 _ (list_restrict_length s 0)).
+    simpl.
     exact (inr (fun (u : forall a, P a) => p' (u (s 0)))).
 Defined.
 
-Definition is_inductive_BI_pi_family {A : pType} (P : A -> Type)
+Definition is_inductive_BI_pi_family {A : Type} (P : A -> Type)
   : is_inductive (BI_pi_family P).
 Proof.
   intros l h.
-  induction l.
-  - left; exact (fun a => (fst (h a))).
-  - simpl in h.
-    pose (q := snd (h a)).
-    rewrite length_app, nat_add_comm in q; simpl in q.
-    contradiction (neq_nat_zero_succ _ q^).
+  destruct l.
+  - left; exact h.
+  (* If [l] is not nil, then [h a] is a term of type [Empty]. *)
+  - destruct l; cbn in *; contradiction.
 Defined.
 
+Definition is_pi_compact_bar_induction {A : pType} (BI : bar_induction A)
+  {P : A -> Type} (dec : forall n : A, Decidable (P n))
+  : Decidable (forall a, P a)
+  := BI (BI_pi_family P)
+          (is_inductive_BI_pi_family P) (is_bar_BI_pi_family dec).
+
+(** We will also show that [A] is Sigma compact, using this family. *)
 Definition BI_sig_family {A : Type} (P : A -> Type) (l : list A)
   : Type
   := match l with
@@ -334,7 +340,7 @@ Proof.
   intro s.
   destruct (dec (s 0)) as [p|p'].
   - exists 0.
-    rewrite (length_0 _ (list_restrict_length s 0)).
+    simpl.
     exact (inl (s 0; p)).
   - exists 1.
     exact (p', idpath).
@@ -352,13 +358,7 @@ Proof.
     contradiction (neq_nat_zero_succ _ q^).
 Defined.
 
-Definition is_pi_compact_bar_induction {A : pType} (BI : bar_induction A)
-  {P : A -> Type} (dec : forall n : A, Decidable (P n))
-  : Decidable (forall a, P a)
-  := BI (BI_pi_family P)
-          (is_inductive_BI_pi_family P) (is_bar_BI_pi_family dec).
-
-(** This implies the previous one because Σ-compactness implies Π-compactness. A proof of that is in [CompactTypes.v] but I have not deleted this since I do not know the best order of dependencies yet. *)
+(** This implies [is_pi_compact_bar_induction] because Σ-compactness implies Π-compactness. A proof of that is in [CompactTypes.v] but I have not deleted this since I do not know the best order of dependencies yet. *)
 Definition is_sig_compact_bar_induction {A : pType} (BI : bar_induction A)
   (P : A -> Type) (dec : forall n : A, Decidable (P n))
   : Decidable {a : A & P a}

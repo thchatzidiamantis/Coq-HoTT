@@ -73,7 +73,7 @@ Proof.
   induction n in s, t, h |- *.
   - exact tt.
   - simpl.
-    exact (h 0 _, IHn _ _ (fun m hm => h _ (_ hm))).
+    exact (h 0 _, IHn _ _ (fun m hm => h m.+1 (_ hm))).
 Defined.
 
 Definition seq_agree_homotopic {X : Type} {n : nat}
