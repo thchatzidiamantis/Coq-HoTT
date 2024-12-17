@@ -14,6 +14,8 @@ Class UStructure (us_type : Type) := {
   us_pred : forall (n : nat) (x y : us_type), us_rel n.+1 x y -> us_rel n x y
 }.
 
+Existing Instances us_reflexive us_symmetric us_transitive.
+
 Notation "u =[ n ] v" := (us_rel n u v) (at level 70).
 
 Definition us_rel_leq {X : Type} {struct : UStructure X}

@@ -3,7 +3,7 @@ Require Import Truncations.Core Truncations.Connectedness.
 Require Import Spaces.Nat.Core.
 Require Import NatSeq.
 Require Import Homotopy.Suspension.
-Require Import Pointed.
+Require Import Pointed.Core.
 Require Import Universes.TruncType Universes.HSet.
 Require Import Idempotents.
 
@@ -12,12 +12,12 @@ Open Scope pointed_scope.
 
 (** One notion of compactness: for every predicate we can decide whether it is always true or not. *)
 Definition IsCompact (A : Type) : Type
-  := (forall p : A -> Bool, {a : A & p a = false} + (forall a : A, p a = true)).
+  := forall p : A -> Bool, {a : A & p a = false} + (forall a : A, p a = true).
 
 (** Any compact type is decidable. *)
 Definition decidable_iscompact {A : Type} (c : IsCompact A) : Decidable A.
 Proof.
-  induction (c (fun (_ : A) => false)) as [c1|c2].
+  destruct (c (fun (_ : A) => false)) as [c1|c2].
   - exact (inl c1.1).
   - exact (inr (fun a => false_ne_true (c2 a))).
 Defined.
@@ -31,7 +31,7 @@ Definition sig_compact (A : Type) : Type
 Definition pred_Bool {A : Type} (p : A -> Bool) : A -> Type
   := fun a => p a = false.
 
-(** Simplify with the is_true map from TruncType.v *)
+(** TODO? Simplify (above?) with the [is_true] map from TruncType.v *)
 Definition pred_Bool_inv {A : Type} (P : A -> Type)
   (dec : forall a : A, Decidable (P a))
   : A -> Bool.
@@ -86,8 +86,8 @@ Definition decidable_pred_Bool {A : Type} (p : A -> Bool)
   : forall a : A, Decidable (pred_Bool p a).
 Proof.
   intro a.
-  remember (p a) as a0 eqn:r ; induction a0.
-  - exact (inr (fun h => (false_ne_true (h^ @ r)))).
+  remember (p a) as a0 eqn:r; destruct a0.
+  - exact (inr (fun h => false_ne_true (h^ @ r))).
   - exact (inl r).
 Defined.
 
@@ -97,7 +97,7 @@ Proof.
   intros P dec.
   destruct (c (pred_Bool_inv P dec)) as [l|r].
   - exact (inl (l.1; pred_Bool_inv_prop _ _ l.1 l.2)).
-  - exact (inr (fun dec' => (pred_Bool_inv_prop' _ _ _ (r dec'.1) dec'.2))).
+  - exact (inr (fun dec' => pred_Bool_inv_prop' _ _ _ (r dec'.1) dec'.2)).
 Defined.
 
 Definition iscompact_sig_compact {A : Type} (c : sig_compact A)
@@ -166,7 +166,7 @@ Defined.
 Definition iscompact_issearchable {A : Type} : IsSearchable A -> IsCompact A.
 Proof.
   intros h p.
-  remember (p (h p).1) as b eqn:r; induction b.
+  remember (p (h p).1) as b eqn:r; destruct b.
   - exact (inr ((h p).2 r)).
   - left.
     exists (h p).1; exact r.
@@ -179,11 +179,11 @@ Definition searchable_iff {A : Type} : IsSearchable A <-> A * (IsCompact A)
   := (fun s => (inhabited_issearchable s, iscompact_issearchable s),
         fun c => issearchable_iscompact_inhabited (snd c) (fst c)).
 
-Definition iscompact_Empty : IsCompact Empty
-  := fun p => (inr (fun a => Empty_rec a)).
+Definition iscompact_empty : IsCompact Empty
+  := fun p => inr (fun a => Empty_rec a).
 
-Definition iscompact_Empty' {A : Type} (not : ~A) : IsCompact A
-  := fun p => ((inr (fun a => Empty_rec (not a)))).
+Definition iscompact_empty' {A : Type} (not : ~A) : IsCompact A
+  := fun p => inr (fun a => Empty_rec (not a)).
 
 Definition iscompact_iff_not_or_issearchable {A : Type} :
   IsCompact A <-> (~ A) + IsSearchable A.
@@ -194,12 +194,12 @@ Proof.
     + exact (inr (issearchable_iscompact_inhabited h l)).
     + exact (inl (r)).
   - intros [l|r].
-    + exact (iscompact_Empty' l).
+    + exact (iscompact_empty' l).
     + exact (iscompact_issearchable r).
 Defined.
 
 (** Every connected pointed type is searchable. *)
-Definition issearchable_isconnected_pType `{Univalence} (A : pType)
+Definition issearchable_isconnected_ptype `{Univalence} (A : pType)
   (c : IsConnected (0 : trunc_index) A)
   : IsSearchable A
   := fun p => (pt; fun h => conn_point_elim (-1) _ h).
@@ -240,7 +240,7 @@ Definition issearchable_suspension `{Univalence} (A : Type)
   : IsSearchable (Susp A).
 Proof.
   intro p.
-  remember (p North) as pn eqn:r; induction pn.
+  remember (p North) as pn eqn:r; destruct pn.
   - exists South.
     intro hs; apply (Susp_ind _ r hs).
     intro x; apply hset_path2.
@@ -248,7 +248,20 @@ Proof.
     intro h; contradiction (true_ne_false (h^ @ r)).
 Defined.
 
-(* Following https://www.cs.bham.ac.uk/~txw467/tychonoff/InfiniteSearch1.html *)
+(** This generalizes both [issearchable_suspension] (since the map [Bool -> Susp X] that includes into the poles is surjective) and [issearchable_isconnected_pType] (since the point inclusion is surjective).  TODO: add that the unit type (or any contractible type) is searchable.  Then could reprove the above two results using this one. *)
+Definition issearchable_image `{Univalence} (A B : Type)
+  (s : IsSearchable A)
+  (f : A -> B) (surj : IsSurjection f)
+  : IsSearchable B.
+Proof.
+  intro p.
+  specialize (s (p o f)).
+  exists (f s.1).
+  intros t.
+  exact (surjection_ind f _ (s.2 t)).
+Defined.
+
+(** Following https://www.cs.bham.ac.uk/~txw467/tychonoff/InfiniteSearch1.html *)
 
 Definition IsSearchable' (A : Type) : Type
   := forall P : A -> Type,
@@ -293,7 +306,7 @@ Definition sig_compact_prop_sig_compact {A : Type}
 
 Definition predicate_prop_trunction {A : Type} (P : A -> Type)
   : A -> HProp
-  := fun a => Build_HProp (Trunc (-1) (P a)).
+  := merely o P.
 
 (** This can definitely be shortened.
 - Use : [Decidable(X) -> ~~-stable(X) -> (X <-> (Tr (-1) X))]. *)
@@ -310,12 +323,12 @@ Proof.
     exact (r x).
 Defined.
 
-Definition sigma_iff_prop_truncation_Decidable {A : Type} {P : A -> Type}
+Definition sigma_iff_prop_truncation_decidable {A : Type} {P : A -> Type}
   (dec : forall a : A, Decidable (P a))
   : {x : A & Tr (-1) (P x)} -> {x : A & P x}.
 Proof.
-  - intros [x hx].
-    exact (x; (fst (@merely_inhabited_iff_inhabited_stable (P x) _)) hx).
+  intros [x hx].
+  exact (x; fst (@merely_inhabited_iff_inhabited_stable (P x) _) hx).
 Defined.
 
 Definition sig_compact_sig_compact_prop {A : Type}
@@ -325,7 +338,7 @@ Proof.
   intros P hP.
   destruct (h (predicate_prop_trunction P)
               (decidable_predicate_prop_truncation hP)) as [[l k]|r].
-  - exact (inl (sigma_iff_prop_truncation_Decidable hP (l; k))).
+  - exact (inl (sigma_iff_prop_truncation_decidable hP (l; k))).
   - right.
     intros [x z].
     exact (r (x; tr z)).
@@ -334,7 +347,7 @@ Defined.
 Definition isselection {A : Type} (eps : (A -> Bool) -> A) : Type
   := forall p : A -> Bool, p (eps p) = true -> forall a : A, p a = true.
 
-(** A type is uniformly searchable if it is searchable over uniformly continuous predicates. *)
+(** A type with a uniform structure is uniformly searchable if it is searchable over uniformly continuous predicates. *)
 Definition uniformly_searchable (A : Type) {usA : UStructure A}
   := forall (p : A -> Bool),
       uniformly_continuous p

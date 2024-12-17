@@ -319,7 +319,7 @@ Proof.
   - destruct l; cbn in *; contradiction.
 Defined.
 
-Definition is_pi_compact_bar_induction {A : pType} (BI : bar_induction A)
+Definition is_pi_compact_bar_induction {A : Type} (BI : bar_induction A)
   {P : A -> Type} (dec : forall n : A, Decidable (P n))
   : Decidable (forall a, P a)
   := BI (BI_pi_family P)
@@ -346,7 +346,7 @@ Proof.
     exact (p', idpath).
 Defined.
 
-Definition is_inductive_BI_sig_family {A : pType} (P : A -> Type)
+Definition is_inductive_BI_sig_family {A : Type} (P : A -> Type)
   : is_inductive (BI_sig_family P).
 Proof.
   intros l h.
@@ -359,7 +359,7 @@ Proof.
 Defined.
 
 (** This implies [is_pi_compact_bar_induction] because Σ-compactness implies Π-compactness. A proof of that is in [CompactTypes.v] but I have not deleted this since I do not know the best order of dependencies yet. *)
-Definition is_sig_compact_bar_induction {A : pType} (BI : bar_induction A)
+Definition is_sig_compact_bar_induction {A : Type} (BI : bar_induction A)
   (P : A -> Type) (dec : forall n : A, Decidable (P n))
   : Decidable {a : A & P a}
   := BI (BI_sig_family P)
@@ -370,10 +370,9 @@ Definition is_sig_compact_bar_induction {A : pType} (BI : bar_induction A)
 Definition LPO_bar_induction {BI : bar_induction nat} (s : nat -> nat)
   : (forall n : nat, s n = 0) + {n : nat & s n <> 0}.
 Proof.
-  destruct (@is_sig_compact_bar_induction
-              (Build_pType nat 0) BI (fun n => s n <> 0) _) as [l|r].
+  destruct (is_sig_compact_bar_induction BI (fun n => s n <> 0) _) as [l|r].
   - right; exact l.
-  - left; exact (fun n => stable (fun z => r (n; z))).
+  - left; exact (fun n => stable (fun z : s n <> 0 => r (n; z))).
 Defined.
 
 (** * The Fan theorem.  *)
@@ -395,31 +394,32 @@ Definition fan_theorem (A : Type) :=
   (bar : is_bar B),
   is_uniform_bar B.
 
-
 (** The family we use to apply the fan theorem in our proof that continuity implies uniform continuity *)
 Definition uc_theorem_family {A : Type} (p : (nat -> A) -> Bool)
   : list A -> Type
   := fun l =>
-      (forall (u v : nat -> A) (h : list_restrict u (length l) = l),
-        u =[length l] v -> p u = p v).
+      forall (u v : nat -> A) (h : list_restrict u (length l) = l),
+        u =[length l] v -> p u = p v.
 
 Definition is_bar_uc_theorem_family {A : Type}
   (p : (nat -> A) -> Bool) (conn : IsContinuous p)
   : is_bar (uc_theorem_family p).
 Proof.
   intro s.
-  specialize (conn s 1).
+  specialize (conn s 0); unfold trivial_us, us_rel in conn.
   exists conn.1.
   unfold uc_theorem_family.
   intros u v h t.
   rewrite list_restrict_length in h, t.
-  pose (y := us_symmetric conn.1 _ _ ((fst seq_agree_iff_res') h)).
-  pose (y' := us_transitive conn.1 _ _ _ y t).
-  exact ((conn.2 _ y)^ @ (conn.2 _ y')).
+  assert (y : s =[conn.1] u).
+  { symmetry; apply seq_agree_iff_res', h. }
+  refine ((conn.2 _ y)^ @ conn.2 _ _).
+  transitivity u.
+  - exact y.
+  - exact t.
 Defined.
 
-(** The fan theorem implies that every continuous function is uniformly continuous.
-Current proof uses the full fan theorem. Less powerful versions might be enough. *)
+(** The fan theorem implies that every continuous function is uniformly continuous. Current proof uses the full fan theorem. Less powerful versions might be enough. *)
 
 Definition uniform_continuity_fan_theorem {A : Type} (fan : fan_theorem A)
   (p : (nat -> A) -> Bool) (conn : IsContinuous p)
