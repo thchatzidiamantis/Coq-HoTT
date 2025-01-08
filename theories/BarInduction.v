@@ -6,6 +6,7 @@ Require Import ExcludedMiddle.
 Require Import Spaces.List.Core Spaces.List.Paths Spaces.List.Theory.
 Require Import Algebra.Rings.Vector.
 Require Import CompactTypes.
+Require Import BoundedSearch.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -343,58 +344,7 @@ Proof.
   pose (P := fun l => {n : nat & (n <= length l) * C (take n l)}).
   pose (Q := fun l => B l + P l).
   assert (dP : forall l : list A, Decidable (P l)).
-  { intro l.
-    remember (length l) as m eqn:p; induction m in l, p |- *.
-    - rewrite (length_0 _ p).
-      destruct (dC nil) as [t|f].
-      + left.
-        exists 0; exact (_, t).
-      + right.
-        intros [n [hn hc]].
-        exact (f (take_nil _ # hc)).
-    - destruct l.
-      1: contradiction (neq_nat_zero_succ _ p).
-      assert (hal : length (take m (a::l)) = m).
-      { refine (length_take m _ @ nat_min_l _).
-        rewrite p; exact _. }  
-      destruct (IHm (take m (a::l)) hal) as [[n [hn hc]]|f].
-      + left.
-        exists n; constructor.
-        1: exact (leq_trans hn (length_take_leq _)).
-        refine (_ # hc).
-        rewrite take_comm.
-        (* This appears twice. *)
-        apply (take_length_leq _ _).
-        assert (k : length (take n (a::l)) = n).
-        { refine ((length_take n (a::l)) @ _).
-          rewrite p.
-          apply nat_min_l.
-          exact (_ (leq_trans hn (hal # reflexive_leq _))). }
-        rewrite k.
-        exact (leq_trans hn (hal # reflexive_leq _)).
-      + destruct (dC (a::l)) as [c|c'].
-        * left.
-          exists (length (a::l)); constructor.
-          1: exact _.
-          exact ((take_length_leq _ _ _)^ # c).
-        * right.
-          intros [n [hn hc]].
-          destruct (equiv_leq_lt_or_eq hn) as [hn1|hn2].
-          2: contradiction
-              (c' ((take_length_leq _ _ (hn2^ # reflexive_leq _)) # hc)).
-          contradiction f.
-          exists n; constructor.
-          1: rewrite hal, p in *; exact _.
-          refine (_^ # hc).
-          rewrite take_comm.
-          refine (take_length_leq _ _ _).
-          assert (k : length (take n (a::l)) = n).
-          { refine ((length_take n (a::l)) @ _).
-            rewrite p.
-            apply nat_min_l.
-            exact (_ (leq_trans hn (p # reflexive_leq _))). }
-          rewrite k.
-          exact (_ (lt_lt_leq_trans hn1 (p # reflexive_leq _))). }
+  1: intro l; rapply decidable_search.
   assert (q : Q nil).
   { rapply (MBI Q P (fun l pl => inr pl)).
     - intros l1 l2 [n (cn1, cn2)].
