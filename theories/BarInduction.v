@@ -5,6 +5,7 @@ Require Import NatSeq.
 Require Import ExcludedMiddle.
 Require Import Spaces.List.Core Spaces.List.Paths Spaces.List.Theory.
 Require Import Algebra.Rings.Vector.
+Require Import CompactTypes.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -170,6 +171,7 @@ Definition seq_agree_iff_res {A : Type} {n : nat} {u v : nat -> A}
 Definition list_restrict_eq_iff {A : Type} {n : nat} {s t : nat -> A}
   : (list_restrict s n = list_restrict t n) <-> (forall (m : nat), m < n -> s m = t m).
 Proof.
+Proof.
   constructor.
   - intros h m hm.
     lhs_V srapply entry_list_restrict.
@@ -244,6 +246,15 @@ Definition bar_induction (A : Type) :=
 
 (** Monotone and full bar induction can be more generally stated for two families. The definitions are equivalent. *)
 
+(** Are the definitions also equivalent in the decidable case? *)
+Definition decidable_bar_induction' (A : Type) :=
+  forall (B C : list A -> Type)
+  (sub : forall l : list A, C l -> B l)
+  (dC : forall (l : list A), Decidable (C l))
+  (ind : is_inductive B)
+  (bar : is_bar C),
+  B nil.
+
 Definition monotone_bar_induction' (A : Type) :=
   forall (B C : list A -> Type)
   (sub : forall l : list A, C l -> B l)
@@ -263,10 +274,10 @@ Definition bar_induction'_bar_induction (A : Type) (BI : bar_induction A)
   : bar_induction' A
   := fun B C sub indB barC => BI B indB (fun s => ((barC s).1; sub _ (barC s).2)).
 
-Definition monotone_bar_induction_montone_bar_induction' (A : Type)
-  : monotone_bar_induction A -> monotone_bar_induction' A.
+Definition monotone_bar_induction'_montone_bar_induction (A : Type)
+  (MBI : monotone_bar_induction A)
+  : monotone_bar_induction' A.
 Proof.
-  intro MBI.
   intros B C sub monC indB barC.
   pose (P := fun v => forall w, B (v++w)).
   nrapply (MBI P).
@@ -277,7 +288,7 @@ Proof.
     + apply indB.
       intro a.
       specialize (H a nil).
-      by rewrite app_nil; rewrite app_nil in H.
+      by rewrite app_nil in *.
     + specialize (H a l2).
       by rewrite <- app_assoc in H.
   - intro s.
@@ -286,6 +297,146 @@ Proof.
     apply sub, monC, barC.
 Defined.
 
+Definition take_app {A : Type} {n : nat} (l1 l2 : list A) (hn : n <= length l1)
+  : take n l1 = take n (l1++l2).
+Proof.
+  induction n in l1, l2, hn |- *.
+  - by repeat rewrite take_0.
+  - induction l1 as [|a l1 IHl1].
+    + contradiction (not_lt_zero_r _ hn).
+    + cbn.
+      apply ap, IHn, (_ hn).
+Defined.
+
+Definition nat_min_leq_l {m n : nat} : nat_min m n <= m.
+Proof.
+  induction n as [|n IHn] in m |- *; destruct m; cbn.
+  1-3: exact _.
+  exact (_ (IHn m)).
+Defined.
+
+Definition nat_min_leq_r {m n : nat} : nat_min m n <= n.
+Proof.
+  induction n as [|n IHn] in m |- *; destruct m; cbn.
+  1-3: exact _.
+  exact (_ (IHn m)).
+Defined.
+
+Definition length_take_leq {A : Type} {n : nat} (l : list A)
+  : length (take n l) <= length l
+  := transport (fun x => x <= length l) (length_take n l)^ nat_min_leq_r.
+
+Definition take_comm {A : Type} {m n : nat} (l : list A)
+  : take n (take m l) = take m (take n l).
+Proof.
+  revert l m; induction n, m, l.
+  1-6: by rewrite take_0.
+  - by rewrite take_nil.
+  - cbn; apply ap, IHn.
+Defined.
+
+Definition decidable_bar_induction'_monotone_bar_induction' (A : Type)
+  (MBI : monotone_bar_induction' A)
+  : decidable_bar_induction' A.
+Proof.
+  intros B C sub dC indB barC.
+  pose (P := fun l => {n : nat & (n <= length l) * C (take n l)}).
+  pose (Q := fun l => B l + P l).
+  assert (dP : forall l : list A, Decidable (P l)).
+  { intro l.
+    remember (length l) as m eqn:p; induction m in l, p |- *.
+    - rewrite (length_0 _ p).
+      destruct (dC nil) as [t|f].
+      + left.
+        exists 0; exact (_, t).
+      + right.
+        intros [n [hn hc]].
+        exact (f (take_nil _ # hc)).
+    - destruct l.
+      1: contradiction (neq_nat_zero_succ _ p).
+      assert (hal : length (take m (a::l)) = m).
+      { refine (length_take m _ @ nat_min_l _).
+        rewrite p; exact _. }  
+      destruct (IHm (take m (a::l)) hal) as [[n [hn hc]]|f].
+      + left.
+        exists n; constructor.
+        1: exact (leq_trans hn (length_take_leq _)).
+        refine (_ # hc).
+        rewrite take_comm.
+        (* This appears twice. *)
+        apply (take_length_leq _ _).
+        assert (k : length (take n (a::l)) = n).
+        { refine ((length_take n (a::l)) @ _).
+          rewrite p.
+          apply nat_min_l.
+          exact (_ (leq_trans hn (hal # reflexive_leq _))). }
+        rewrite k.
+        exact (leq_trans hn (hal # reflexive_leq _)).
+      + destruct (dC (a::l)) as [c|c'].
+        * left.
+          exists (length (a::l)); constructor.
+          1: exact _.
+          exact ((take_length_leq _ _ _)^ # c).
+        * right.
+          intros [n [hn hc]].
+          destruct (equiv_leq_lt_or_eq hn) as [hn1|hn2].
+          2: contradiction
+              (c' ((take_length_leq _ _ (hn2^ # reflexive_leq _)) # hc)).
+          contradiction f.
+          exists n; constructor.
+          1: rewrite hal, p in *; exact _.
+          refine (_^ # hc).
+          rewrite take_comm.
+          refine (take_length_leq _ _ _).
+          assert (k : length (take n (a::l)) = n).
+          { refine ((length_take n (a::l)) @ _).
+            rewrite p.
+            apply nat_min_l.
+            exact (_ (leq_trans hn (p # reflexive_leq _))). }
+          rewrite k.
+          exact (_ (lt_lt_leq_trans hn1 (p # reflexive_leq _))). }
+  assert (q : Q nil).
+  { rapply (MBI Q P (fun l pl => inr pl)).
+    - intros l1 l2 [n (cn1, cn2)].
+      exists n; constructor.
+      1: rewrite length_app; apply (_ cn1).
+      exact (take_app l1 l2 cn1 # cn2).
+    - intros l hl.
+      destruct (dP l) as [t|f].
+      1: exact (inr t).
+      left. refine (indB _ _).
+      intro a; destruct (hl a) as [b|[n [hn hc]]].
+      1: exact b.
+      destruct (equiv_leq_lt_or_eq hn) as [hn1|hn2].
+      + contradiction f.
+        exists n; constructor.
+        * rewrite length_app, nat_add_comm in hn1.
+          exact _.
+        * refine ((take_app l [a] _)^ # hc).
+          rewrite length_app, nat_add_comm in hn1.
+          exact _.
+      + refine (sub _ ((take_length_leq _ _ _) # hc)).
+        apply equiv_leq_lt_or_eq; exact (inr hn2^).
+    - intro s.
+      exists (barC s).1; exists (barC s).1.
+      constructor.
+      1: by rewrite (list_restrict_length s (barC s).1).
+      rewrite (take_length_leq _ _).
+      + exact (barC s).2.
+      + by rewrite (list_restrict_length s (barC s).1). }
+  destruct q as [b0|[n [hn hc]]].
+  1: exact b0.
+  exact (sub _ (take_nil _ # hc)).
+Defined.
+
+Definition decidable_bar_induction_monotone_bar_induction (A : Type)
+  (MBI : monotone_bar_induction A)
+  : decidable_bar_induction A
+  := fun B dec ind bar =>
+      (decidable_bar_induction'_monotone_bar_induction' A
+        (monotone_bar_induction'_montone_bar_induction A MBI))
+      B B (fun _ => idmap) dec ind bar.
+
 (** * Full bar induction for a type implies that it is compact.  *)
 
 (** We will prove Pi-compactness by showing that [forall a, P a] is decidable for any decidable family [P].  We make use of the following family over [list A] which has that goal as the value at [nil]. *)
@@ -293,8 +444,7 @@ Definition BI_pi_family {A : Type} (P : A -> Type) (l : list A)
   : Type
   := match l with
       | nil => Decidable (forall a, P a)
-      | a :: nil => P a
-      | _ => Empty
+      | a :: l' => P a
      end.
 
 Definition is_bar_BI_pi_family {A : Type} {P : A -> Type}
@@ -315,8 +465,9 @@ Proof.
   intros l h.
   destruct l.
   - left; exact h.
+  - exact (h a).
   (* If [l] is not nil, then [h a] is a term of type [Empty]. *)
-  - destruct l; cbn in *; contradiction.
+  (* - destruct l; cbn in *; contradiction. *)
 Defined.
 
 Definition is_pi_compact_bar_induction {A : Type} (BI : bar_induction A)
@@ -330,7 +481,7 @@ Definition BI_sig_family {A : Type} (P : A -> Type) (l : list A)
   : Type
   := match l with
       | nil => Decidable {a : A & P a}
-      | n :: l' => (~(P n)) * (length l' = 0)
+      | n :: l' => ~(P n)
      end.
 
 Definition is_bar_BI_sig_family {A : Type} {P : A -> Type}
@@ -343,19 +494,17 @@ Proof.
     simpl.
     exact (inl (s 0; p)).
   - exists 1.
-    exact (p', idpath).
+    exact p'.
 Defined.
 
 Definition is_inductive_BI_sig_family {A : Type} (P : A -> Type)
   : is_inductive (BI_sig_family P).
 Proof.
   intros l h.
-  induction l.
-  - right. exact (fun pa => (fst (h pa.1) pa.2)).
-  - simpl in h.
-    pose (q := snd (h a)).
-    rewrite length_app, nat_add_comm in q; simpl in q.
-    contradiction (neq_nat_zero_succ _ q^).
+  destruct l.
+  - right. exact (fun pa => (h pa.1) pa.2).
+  - exact (h a).
+  (* - destruct l; cbn in *; contradiction. *)
 Defined.
 
 (** This implies [is_pi_compact_bar_induction] because Σ-compactness implies Π-compactness. A proof of that is in [CompactTypes.v] but I have not deleted this since I do not know the best order of dependencies yet. *)
