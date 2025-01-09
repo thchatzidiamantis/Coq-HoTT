@@ -134,7 +134,7 @@ Proof.
   lhs nrapply entry_restrict; rhs nrapply entry_restrict.
   unfold NatSeq.tail.
   pose (h' := vector_path h i.+1 _).
-  repeat rewrite entry_restrict in h'.
+  rewrite !entry_restrict in h'.
   exact h'.
 Defined.
 
@@ -161,7 +161,7 @@ Proof.
   - lhs srapply entry_restrict; rhs srapply entry_restrict; induction i.
     + exact (fst h).
     + pose (ih := IHn (NatSeq.tail u) (NatSeq.tail v) (snd h) i _).
-      repeat rewrite entry_restrict in ih.
+      rewrite !entry_restrict in ih.
       rapply ih.
 Defined.
 
@@ -302,7 +302,7 @@ Definition take_app {A : Type} {n : nat} (l1 l2 : list A) (hn : n <= length l1)
   : take n l1 = take n (l1++l2).
 Proof.
   induction n in l1, l2, hn |- *.
-  - by repeat rewrite take_0.
+  - by rewrite !take_0.
   - induction l1 as [|a l1 IHl1].
     + contradiction (not_lt_zero_r _ hn).
     + cbn.
@@ -327,13 +327,20 @@ Definition length_take_leq {A : Type} {n : nat} (l : list A)
   : length (take n l) <= length l
   := transport (fun x => x <= length l) (length_take n l)^ nat_min_leq_r.
 
+Definition take_take_min {A : Type} {m n : nat} (l : list A)
+  : take n (take m l) = take (nat_min n m) l.
+Proof.
+  revert n m l; induction n, m.
+  1-3: intro l; by rewrite !take_0.
+  destruct l as [|a l'].
+  1: by rewrite !take_nil.
+  cbn. apply ap, IHn.
+Defined.
+
 Definition take_comm {A : Type} {m n : nat} (l : list A)
   : take n (take m l) = take m (take n l).
 Proof.
-  revert l m; induction n, m, l.
-  1-6: by rewrite take_0.
-  - by rewrite take_nil.
-  - cbn; apply ap, IHn.
+  by rewrite !take_take_min, nat_min_comm.
 Defined.
 
 Definition decidable_bar_induction'_monotone_bar_induction' (A : Type)
@@ -345,38 +352,40 @@ Proof.
   pose (Q := fun l => B l + P l).
   assert (dP : forall l : list A, Decidable (P l)).
   1: intro l; rapply decidable_search.
-  assert (q : Q nil).
-  { rapply (MBI Q P (fun l pl => inr pl)).
-    - intros l1 l2 [n (cn1, cn2)].
+  assert (hqb : Q nil -> B nil).
+  { intro q; destruct q as [b0|[n [hn hc]]].
+    1: exact b0.
+    exact (sub _ (take_nil _ # hc)). }
+  apply hqb.
+  apply (MBI Q P (fun l pl => inr pl)).
+  - intros l1 l2 [n (cn1, cn2)].
+    exists n; constructor.
+    + rewrite length_app.
+      apply (_ cn1).
+    + exact (take_app l1 l2 cn1 # cn2).
+  - intros l hl.
+    destruct (dP l) as [t|f].
+    1: exact (inr t).
+    left. refine (indB _ _).
+    intro a; destruct (hl a) as [b|[n [hn hc]]].
+    1: exact b.
+    destruct (equiv_leq_lt_or_eq hn) as [hn1|hn2].
+    + contradiction f.
+      assert (hln : n <= length l).
+      { rewrite length_app, nat_add_comm in hn1.
+        exact _. }
       exists n; constructor.
-      1: rewrite length_app; apply (_ cn1).
-      exact (take_app l1 l2 cn1 # cn2).
-    - intros l hl.
-      destruct (dP l) as [t|f].
-      1: exact (inr t).
-      left. refine (indB _ _).
-      intro a; destruct (hl a) as [b|[n [hn hc]]].
-      1: exact b.
-      destruct (equiv_leq_lt_or_eq hn) as [hn1|hn2].
-      + contradiction f.
-        exists n; constructor.
-        * rewrite length_app, nat_add_comm in hn1.
-          exact _.
-        * refine ((take_app l [a] _)^ # hc).
-          rewrite length_app, nat_add_comm in hn1.
-          exact _.
-      + refine (sub _ ((take_length_leq _ _ _) # hc)).
-        apply equiv_leq_lt_or_eq; exact (inr hn2^).
-    - intro s.
-      exists (barC s).1; exists (barC s).1.
-      constructor.
-      1: by rewrite (list_restrict_length s (barC s).1).
-      rewrite (take_length_leq _ _).
-      + exact (barC s).2.
-      + by rewrite (list_restrict_length s (barC s).1). }
-  destruct q as [b0|[n [hn hc]]].
-  1: exact b0.
-  exact (sub _ (take_nil _ # hc)).
+      * exact hln.
+      * exact ((take_app l [a] hln)^ # hc).
+    + refine (sub _ ((take_length_leq _ _ _) # hc)).
+      apply equiv_leq_lt_or_eq; exact (inr hn2^).
+  - intro s.
+    exists (barC s).1; exists (barC s).1.
+    constructor.
+    + by rewrite (list_restrict_length s (barC s).1).
+    + rewrite (take_length_leq _ _).
+      1: exact (barC s).2.
+      by rewrite (list_restrict_length s (barC s).1).
 Defined.
 
 Definition decidable_bar_induction_monotone_bar_induction (A : Type)
