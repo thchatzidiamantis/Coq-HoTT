@@ -203,14 +203,14 @@ Definition is_uniform_bar {A : Type} (B : list A -> Type)
 
 (** A family [B] on a type of finite sequences is inductive if, for every list, concatenations with any term being in [B] implies that the list is in [B]. *)
 Definition is_inductive {A : Type} (B : list A -> Type)
-  := forall (l : list A), (forall (a : A), B (l++[a])) -> B l.
+  := forall (l : list A), (forall (a : A), B (l ++ [a])) -> B l.
 
 (** A family [B] on a type of finite sequences is monotone if for every list in [B] concatenations with any other lists are still in [B]. Equivalently, we can just check for concatenations with terms. *)
 Definition is_monotone {A : Type} (B : list A -> Type)
-  := forall (l1 l2 : list A), B l1 -> B (l1++l2).
+  := forall (l1 l2 : list A), B l1 -> B (l1 ++ l2).
 
 Definition is_monotone' {A : Type} (B : list A ->Type)
-  := forall (l : list A) (a : A), B l -> B (l++[a]).
+  := forall (l : list A) (a : A), B l -> B (l ++ [a]).
 
 Definition is_monotone'_is_monotone {A : Type} (B : list A -> Type)
   (mon : is_monotone' B)
@@ -280,7 +280,7 @@ Definition monotone_bar_induction'_montone_bar_induction (A : Type)
   : monotone_bar_induction' A.
 Proof.
   intros B C sub monC indB barC.
-  pose (P := fun v => forall w, B (v++w)).
+  pose (P := fun v => forall w, B (v ++ w)).
   nrapply (MBI P).
   - intros u v H w.
     by rewrite <- app_assoc.
@@ -299,7 +299,7 @@ Proof.
 Defined.
 
 Definition take_app {A : Type} {n : nat} (l1 l2 : list A) (hn : n <= length l1)
-  : take n l1 = take n (l1++l2).
+  : take n l1 = take n (l1 ++ l2).
 Proof.
   induction n in l1, l2, hn |- *.
   - by rewrite !take_0.
