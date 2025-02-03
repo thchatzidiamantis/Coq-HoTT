@@ -236,7 +236,7 @@ Proof.
   - exact (inr (fun a => r (tr a))).
 Defined.
 
-(** Could also be done with a map Bool -> Susp A. *)
+(** Could also be done with a map [Bool] -> [Susp A]. *)
 Definition issearchable_suspension `{Univalence} (A : Type)
   : IsSearchable (Susp A).
 Proof.
@@ -260,6 +260,18 @@ Proof.
   exists (f s.1).
   intros t.
   exact (surjection_ind f _ (s.2 t)).
+Defined.
+
+Definition iscompact_image `{Univalence} (A B : Type)
+  (c : IsCompact A)
+  (f : A -> B) (surj : IsSurjection f)
+  : IsCompact B.
+Proof.
+  apply iscompact_iff_not_or_issearchable.
+  destruct ((fst iscompact_iff_not_or_issearchable) c) as [n|s].
+  - left; intro b.
+    rapply (surjection_ind f _ n b).
+  - right; exact (issearchable_image _ _ s f surj).
 Defined.
 
 (** Following https://www.cs.bham.ac.uk/~txw467/tychonoff/InfiniteSearch1.html *)
