@@ -289,6 +289,19 @@ Proof.
   exact (tr (s y; h y)).
 Defined.
 
+(** To prove a prop-valued predicate for the codomain of a surjection, it suffices to prove it on the domain. *)
+Definition surjection_ind {A B : Type} (f : A -> B) `{IsSurjection f}
+  (P : B -> Type) `{forall b, IsHProp (P b)}
+  (p : forall a, P (f a))
+  : forall b, P b.
+Proof.
+  intro b.
+  pose proof (a := center (Tr (-1) (hfiber f b))).
+  strip_truncations.
+  apply (transport P a.2).
+  apply p.
+Defined.
+
 (** ** Embeddings *)
 
 (** For any point in the image of an embedding, the fibers are contractible. *)
