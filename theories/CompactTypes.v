@@ -259,7 +259,7 @@ Proof.
   specialize (s (p o f)).
   exists (f s.1).
   intros t.
-  exact (surjection_ind f _ (s.2 t)).
+  exact (conn_map_elim _ f _ (s.2 t)).
 Defined.
 
 Definition iscompact_image `{Univalence} (A B : Type)
@@ -270,7 +270,7 @@ Proof.
   apply iscompact_iff_not_or_issearchable.
   destruct ((fst iscompact_iff_not_or_issearchable) c) as [n|s].
   - left; intro b.
-    rapply (surjection_ind f _ n b).
+    rapply (conn_map_elim _ f _ n b).
   - right; exact (issearchable_image _ _ s f surj).
 Defined.
 
