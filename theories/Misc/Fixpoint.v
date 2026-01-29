@@ -6,11 +6,17 @@ Require Import Suspension.
 Require Import Truncations.Core Truncations.Connectedness Truncations.Constant.
 (* Results from Truncations.Constant might be useful as this progresses. *)
 Require Import HSpace.Core.
+Require Import Homotopy.ClassifyingSpace.
+Require Import Algebra.Groups.Group Subgroup Algebra.AbGroups.Centralizer.
+Require Import Colimits.Quotient.
+Require Import Pointed WildCat WildCat.Core Products WildCat.Adjoint.
+Require Import Cubical.DPath PathSquare.
 Require Export Classes.interfaces.canonical_names (SgOp, sg_op,
     MonUnit, mon_unit, LeftIdentity, left_identity, RightIdentity, right_identity,
     Negate, negate, Associative, simple_associativity, associativity,
     LeftInverse, left_inverse, RightInverse, right_inverse, Commutative, commutativity).
 Export canonical_names.BinOpNotations.
+Export Homotopy.ClassifyingSpace.ClassifyingSpaceNotation.
 
 Local Open Scope pointed_scope.
 Local Open Scope trunc_scope.
@@ -317,6 +323,227 @@ Proof.
   exact (ap10 (s k).2 (s k).1)^.
 Defined.
 
+(** ** Consequences of the fixed point property *)
+
+Definition helper_function {A : Type} (f : A -> Bool) (x y : A) : A -> A.
+Proof.
+  intro a.
+    destruct (decidable_paths_bool (f a) (f y)) as [r | s].
+    - exact x.
+    - exact y.
+Defined.
+
+Definition constant_hasmerefixedpoints {A : Type}
+  (fp_A : HasMereFixedPoints A) (f : A -> Bool)
+  : forall x y, f x = f y.
+Proof.
+  intros x y.
+  pose (g := helper_function f x y).
+  specialize (fp_A g).
+  strip_truncations.
+  (* Since this term will come up later in the proof, we remember it. *)
+  remember (decidable_paths_bool (f fp_A.1) (f y)) as d eqn:e.
+  destruct d as [r | s].
+  - refine (_ @ r).
+    apply ap.
+    rewrite fp_A.2^.
+    unfold g, helper_function.
+    rewrite e.
+    reflexivity.
+  - contradiction s.
+    apply ap.
+    rewrite fp_A.2^.
+    unfold g, helper_function.
+    rewrite e.
+    reflexivity.
+Admitted.
+
+(** ** Unpointed functions between classifying spaces *)
+
+Definition subtype_centralizer {G : Group} (H : G -> Type)
+  : G -> Type
+  (* Note the order of operations here, we do this to match the original proofs for the centraliser of an element. *)
+  := fun g => (forall h : G, H h -> centralizer h g).
+
+(* Need Funext to prove that this [subtype_centralizer] is [HProp]-valued. *)
+Instance issubgroup_subtype_centralizer `{F : Funext}
+  {G : Group} (H : G -> Type)
+  : IsSubgroup (subtype_centralizer H).
+Proof.
+  srapply Build_IsSubgroup.
+  - intros h Hh.
+    exact (centralizer_unit h).
+  - intros x y cx cy h Hh.
+    exact (centralizer_sgop _ _ _ (cx h Hh) (cy h Hh)).
+  - intros x Hx h Hh.
+    exact (centralizer_inverse h x (Hx h Hh)).
+Defined.
+
+Definition subtype_centralizer_subgroup `{F : Funext}
+  {G : Group} (H : G -> Type)
+  := Build_Subgroup G (subtype_centralizer H) _.
+
+(* remove this later *)
+Definition b_subtype_centralizer `{F : Funext} {G : Group} (H : G -> Type)
+  : Type.
+Proof.
+  apply ClassifyingSpace.
+  apply (subgroup_group (G:=G)).
+  exists (subtype_centralizer H); exact _.
+Defined.
+
+Definition grp_hom_centralizer_image_grp_hom `{F : Funext}
+  {G H : Group} (f : G $-> H)
+  : grp_prod (subtype_centralizer_subgroup (grp_image f)) G
+    $-> H.
+Proof.
+  snapply Build_GroupHomomorphism.
+  1,2: intros [[x Cx] y].
+  - exact (x * f y).
+  - intros [[z Cz] w]; cbn.
+    refine (grp_assoc _ (f y) (f w) @ _ # ap _ (grp_homo_op _ _ _)).
+    lhs_V exact (ap (.* f w) (grp_assoc x z (f y))).
+    lhs_V exact (ap (fun r => x * r * (f w)) (Cz (f y) (tr (y; 1)))).
+    lhs exact (ap (.* f w) (grp_assoc x (f y) z)).
+    exact (grp_assoc (x * (f y)) z (f w))^.
+Defined.
+
+Definition grp_image_factorization {G H K : Group} (u : G $-> H) (v : H $-> K)
+  : (v $o u) $== (grp_homo_restr v _) $o grp_homo_image_in u
+  := fun x => idpath.
+
+(* This is very slow. Is seems that it should also be simpler. *)
+Definition eq_grp_image_homotopy {G H : Group} (u v : G $-> H) (p : u $== v)
+  : subgroup_group (grp_image u) $<~> subgroup_group (grp_image v).
+Proof.
+  srapply Build_GroupIsomorphism.
+  - unshelve snapply Build_GroupHomomorphism.
+    { intros [h uh].
+      exists h.
+      strip_truncations; apply tr.
+      exact (uh.1; (p _)^ @ uh.2). }
+    { intros x y.
+      snapply path_sigma_hprop.
+      - exact _.
+      - reflexivity. }
+  - snapply isequiv_adjointify.
+    { intros [h vh].
+      exists h.
+      strip_truncations; apply tr.
+      exact (vh.1; (p _) @ vh.2). }
+    { intro x.
+      snapply path_sigma_hprop.
+      - exact _.
+      - reflexivity. }
+    { intro x.
+      snapply path_sigma_hprop.
+      - exact _.
+      - reflexivity. }
+Defined.
+
+(** u is v composed with an embedding (conjugation) so the images will be equivalent. *)
+Definition equiv_image_grp_hom_conj `{F : Funext}
+  {G H : Group} {u v : G $-> H}
+  {c : H} (hc : forall g : G, u g = grp_conj c (v g))
+  : subgroup_group (grp_image u) $<~> subgroup_group (grp_image v).
+Proof.
+
+Admitted.
+
+
+Definition grp_hom_centralizer_image_grp_hom_conj `{F : Funext}
+  {G H : Group} {u v : G $-> H}
+  (conj : {h : H & forall g : G, u g = grp_conj h (v g)})
+  : (subtype_centralizer_subgroup (fun h => {g : G & u g = h}))
+    <~> (subtype_centralizer_subgroup (fun h => {g : G & v g = h})).
+Proof.
+(* I can probably be smarter about this and show that the subtypes formed by this are equivalent before applying subtype_centralizer_subgroup. See thing above. *)
+  snapply Build_Equiv.
+  - intros [x Cx].
+    unfold subtype_centralizer_subgroup, subtype_centralizer, centralizer in *.
+    cbn in *.
+    exists x.
+    intros h [k p].
+Admitted.
+
+Definition bg_grp_hom `{F : Funext} {G H : Group} (f : G $-> H)
+  : b_subtype_centralizer (fun h => {g : G & f g = h}) -> (B G -> B H).
+Proof.
+  apply equiv_uncurry.
+Admitted.
+
+Definition groupreps `{U : Univalence} (G H : Group) : Type.
+Proof.
+  unshelve refine (@Quotient (G $-> H) _).
+  intros a b.
+  exact {h : H & forall g : G, a g = grp_conj h (b g)}.
+Defined.
+
+Definition idmap_fmap_grp_conj {G : Group} (g : G)
+  : fmap B (grp_conj g) == idmap.
+Proof.
+  srapply ClassifyingSpace_ind_hset.
+  - exact (bloop g).
+  - intro x.
+    rapply equiv_sq_dp^-1.
+    cbn.
+    apply (sq_ccGG (p0x:=bloop (grp_conj g x)) (p1x:=bloop x)).
+    + by rewrite ClassifyingSpace_rec_beta_bloop.
+    + exact (ap_idmap _)^.
+    + apply equiv_sq_path; cbn.
+      rhs_V rapply (bloop_pp _ _); lhs rapply (bloop_pp _ _)^.
+      by rhs rapply (ap bloop (grp_inv_gV_g _ g)).
+Defined.
+
+(* This map should be an equivalence on [pi 0]. *)
+Definition rep_bg_to_bh `{U : Univalence} (G H : Group)
+  : groupreps G H -> Trunc 0 (B G -> B H).
+Proof.
+  unshelve refine (Quotient_rec _ _ _ _).
+  - intro f.
+    apply tr.
+    exact (fmap B (a := G) (b := H) f).
+  - intros a b [h r].
+    apply ap.
+    apply path_forall.
+    lhs' exact (fmap2 (g:=grp_conj h $o b) B r).
+    lhs' exact (fmap_comp B b (grp_conj h)).
+    (* Define an unpointed B functor by composing with [pType -> Type]. *)
+    intro x.
+    exact (idmap_fmap_grp_conj h _).
+Defined.
+
+Definition isequiv_rep_bg_to_bh `{U : Univalence} (G H : Group)
+  : IsEquiv (rep_bg_to_bh G H).
+Proof.
+  apply equiv_contr_map_isequiv.
+  intro f.
+  strip_truncations.
+  generalize (merely_path_is0connected (B H) (f bbase) bbase).
+  intro q.
+  strip_truncations.
+  srapply Build_Contr.
+  - unshelve econstructor.
+    { unfold groupreps.
+      apply class_of.
+      apply equiv_grp_homo_pmap_bg.
+      srapply Build_pMap.
+      1: exact f.
+      exact q. }
+    { unfold rep_bg_to_bh.
+      admit. }
+  - 
+  (* Do this in a separate lemma, generalising the first map (any two maps that are sent to the same thing are conjugate). *)
+    intros [u p].
+    srapply path_sigma_hprop.
+    unfold ".1".
+    snapply (path_in_class_of _ _ _ _)^.
+    1,2,3,4: admit.
+Admitted.
+
+(** * B preserves products *)
+
+(** Right adjoints preserve products *)
 
 
 
@@ -327,18 +554,6 @@ Defined.
 
 
 
-
-
-
-
-
-
-
-
-
-(* Theorem 8.3 from Szymik could correspond to a modality-based result? *)
-
-(* What about Σ-types? *)
 
 (* Is every such type connected? Is every such type not disconnected? Probably, following the [Bool] example. Is every connected type with fixed points contractible? *)
 
