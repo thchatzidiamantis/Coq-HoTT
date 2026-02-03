@@ -1,5 +1,6 @@
 From HoTT Require Import Basics Types.
-Require Import WildCat HSet Truncations.Core Modalities.ReflectiveSubuniverse.
+From HoTT.WildCat Require Import Core Opposite Bifunctor Square Equiv.
+Require Import HSet Truncations.Core Modalities.ReflectiveSubuniverse.
 Require Import Groups.Group Groups.QuotientGroup AbelianGroup Biproduct.
 
 (** * Homomorphisms from a group to an abelian group form an abelian group. *)
@@ -162,7 +163,7 @@ Defined.
 Instance is0functor_ab_hom01 `{Funext} {A : Group^op}
   : Is0Functor (ab_hom A).
 Proof.
-  snapply (Build_Is0Functor _ AbGroup); intros B B' f.
+  snapply Build_Is0Functor; intros B B' f.
   snapply Build_GroupHomomorphism.
   1: exact (fun g => grp_homo_compose f g).
   intros phi psi.
@@ -173,7 +174,7 @@ Defined.
 Instance is0functor_ab_hom10 `{Funext} {B : AbGroup@{u}}
   : Is0Functor (flip (ab_hom : Group^op -> AbGroup -> AbGroup) B).
 Proof.
-  snapply (Build_Is0Functor (Group^op) AbGroup); intros A A' f.
+  snapply Build_Is0Functor; intros A A' f.
   snapply Build_GroupHomomorphism.
   1: exact (fun g => grp_homo_compose g f).
   intros phi psi.

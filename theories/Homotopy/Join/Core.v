@@ -5,7 +5,8 @@ Require Import Extensions.
 Require Import Colimits.Pushout.
 Require Import Truncations.Core Truncations.Connectedness.
 Require Import Pointed.Core.
-Require Import WildCat.
+From HoTT.WildCat Require Import Core Universe Equiv EquivGpd
+  ZeroGroupoid Yoneda FunctorCat NatTrans Bifunctor Monoidal.
 Require Import Spaces.Nat.Core.
 
 Local Open Scope pointed_scope.
@@ -30,7 +31,7 @@ Section Join.
 
   Definition Join_ind {A B : Type} (P : Join A B -> Type)
     (P_A : forall a, P (joinl a)) (P_B : forall b, P (joinr b))
-    (P_g : forall a b, transport P (jglue a b) (P_A a) = (P_B b))
+    (P_g : forall a b, transport P (jglue a b) (P_A a) = P_B b)
     : forall (x : Join A B), P x.
   Proof.
     apply (Pushout_ind P P_A P_B).
@@ -145,7 +146,7 @@ Arguments joinr {A B}%_type_scope _ , A [B] _.
 
 (** ** Zigzags in joins *)
 
-(** These paths are very common, so we give them names. *)
+(** These paths are very common, so we give them names and prove a few results about them. *)
 Definition zigzag {A B : Type} (a a' : A) (b : B)
   : joinl a = joinl a'
   := jglue a b @ (jglue a' b)^.
@@ -153,6 +154,14 @@ Definition zigzag {A B : Type} (a a' : A) (b : B)
 Definition zagzig {A B : Type} (a : A) (b b' : B)
   : joinr b = joinr b'
   := (jglue a b)^ @ jglue a b'.
+
+Definition zigzag_zigzag {A B : Type} (a a' : A) (b : B)
+  : zigzag a a' b @ zigzag a' a b = 1
+  := concat_pp_p _ _ _ @ (1 @@ concat_V_pp _ _) @ concat_pV _.
+
+Definition zigzag_inv {A B : Type} (a a' : A) (b : B)
+  : (zigzag a a' b)^ = zigzag a' a b
+  := inv_pp _ _ @ (inv_V _ @@ 1).
 
 (** And we give a beta rule for zigzags. *)
 Definition Join_rec_beta_zigzag {A B P : Type} (P_A : A -> P)
@@ -343,9 +352,7 @@ Instance is0functor_joinrecdata_0gpd (A B : Type) : Is0Functor (joinrecdata_0gpd
 Proof.
   apply Build_Is0Functor.
   intros P Q g.
-  snapply Build_Fun01.
-  - exact (joinrecdata_fun g).
-  - apply is0functor_joinrecdata_fun.
+  exact (Build_Fun01 (joinrecdata_fun g)).
 Defined.
 
 (** [joinrecdata_0gpd A B] is a 1-functor from [Type] to [ZeroGpd]. *)
@@ -677,14 +684,13 @@ Section JoinSym.
   Definition joinrecdata_sym (A B P : Type)
     : joinrecdata_0gpd A B P $-> joinrecdata_0gpd B A P.
   Proof.
-    snapply Build_Fun01.
+    snapply Build_Fun01'.
     (* The map of types [JoinRecData A B P -> JoinRecData B A P]: *)
     - intros [fl fr fg].
       snapply (Build_JoinRecData fr fl).
       intros b a; exact (fg a b)^.
     (* It respects the paths. *)
-    - apply Build_Is0Functor.
-      intros f g h; simpl.
+    - intros f g h; simpl.
       snapply Build_JoinRecPath; simpl.
       1, 2: intros; apply h.
       intros b a.
