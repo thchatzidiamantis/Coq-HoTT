@@ -491,18 +491,18 @@ jobs:
         name: timing-html
     # Unpack Tar files
     - run: |
-        mkdir deploy-doc
-        tar -xf alectryon-html.tar  -C deploy-doc
-        tar -xf dep-graphs.tar      -C deploy-doc
-        tar -xf file-dep-graphs.tar -C deploy-doc
-        tar -xf coqdoc-html.tar     -C deploy-doc
-        tar -xf timing-html.tar     -C deploy-doc
+        mkdir _deploy
+        tar -xf alectryon-html.tar  -C _deploy
+        tar -xf dep-graphs.tar      -C _deploy
+        tar -xf file-dep-graphs.tar -C _deploy
+        tar -xf coqdoc-html.tar     -C _deploy
+        tar -xf timing-html.tar     -C _deploy
 
     - name: Deploy 🚀
       uses: JamesIves/github-pages-deploy-action@4.1.8
       with:
         branch: ${{ env.deployment-branch }}
-        folder: deploy-doc
+        folder: _deploy
         single-commit: true
 
 
