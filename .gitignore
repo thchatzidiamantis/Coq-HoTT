@@ -106,7 +106,7 @@ contrib/*.bak.*
 _build/
 
 # ignore deploy staging directory
-_deploy/
+deploy-doc/
 
 # ignore _CoqProject since we autogenerate it
 _CoqProject
