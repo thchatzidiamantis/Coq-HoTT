@@ -497,6 +497,7 @@ jobs:
         tar -xf file-dep-graphs.tar -C deploy-doc
         tar -xf coqdoc-html.tar     -C deploy-doc
         tar -xf timing-html.tar     -C deploy-doc
+        cp etc/doc-index.html deploy-doc/index.html
 
     - name: Deploy 🚀
       uses: JamesIves/github-pages-deploy-action@4.1.8
