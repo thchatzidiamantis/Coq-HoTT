@@ -336,7 +336,7 @@ Proof.
   - by destruct a.
 Defined.
 
-(** Inductively, any type of the form [Fin n] is comapct. *)
+(** Inductively, any type of the form [Fin n] is compact. *)
 Definition issigmacompact_fin (n : nat)
   : IsSigmaCompact (Fin n).
 Proof.
