@@ -190,15 +190,16 @@ Definition issearchable_iff (A : Type) : IsSearchable A <-> A * (IsSigmaCompact 
   := (fun s => (inhabited_issearchable s, issigmacompact_issearchable s),
         fun c => issearchable_issigmacompact_inhabited (snd c) (fst c)).
 
-(** ** Examples of searchable and compact types  *)
+(** ** Examples of searchable and compact types, and closure properties *)
 
-(** Contractible types are searchable. *)
+(** Contractible types are compact. *)
 Definition issigmacompact_contr {A} (c : Contr A) : IsSigmaCompact A.
 Proof.
   intros P dP.
   rapply (decidable_equiv _ (equiv_contr_sigma _)^-1).
 Defined.
 
+(** Contractible types are searchable. *)
 Definition issearchable_contr {A} (c : Contr A) : IsSearchable A.
 Proof.
   intros P dP.
@@ -215,6 +216,7 @@ Proof.
   all: by intros p' [].
 Defined.
 
+(** [Bool] is compact. *)
 Definition issigmacompact_bool : IsSigmaCompact Bool
   := issigmacompact_issearchable issearchable_Bool.
 
@@ -283,7 +285,7 @@ Definition issearchable_image `{Univalence} (A B : Type)
   : IsSearchable B
   := issearchable_issearchableprops (issearchableprops_image A B s f surj).
 
-(** Assuming univalence, every connected pointed type is searchable. *)
+(** Assuming univalence, every pointed, connected type is searchable. *)
 Definition issearchable_isconnected_ptype `{Univalence} (A : pType)
   (c : IsConnected 0 A)
   : IsSearchable A
@@ -344,7 +346,7 @@ Proof.
     rapply issigmacompact_contr.
 Defined.
 
-(* A decidable subtype of a compact type is compact *)
+(** A decidable subtype of a compact type is compact. *)
 Definition issigmacompact_detachable_subtype {A : Type} {P : A -> HProp}
   (cA : IsSigmaCompact A) (dP : forall (a : A), Decidable (P a))
   : IsSigmaCompact (sig P).
