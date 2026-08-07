@@ -15,11 +15,11 @@ Local Open Scope pointed_scope.
 
 (** ** Basic definitions of compact types *)
 
-(** Another equivalent definition of compactness: If a family over the type is decidable, then the Σ-type is decidable. *)
+(** A type [A] is compact if for every decidable family over [A], the Σ-type is decidable. *)
 Definition IsSigmaCompact (A : Type)
   := forall P : A -> Type, (forall a : A, Decidable (P a)) -> Decidable (sig P).
 
-(** Again, it is enough to consider [HProp]-valued families. *)
+(** It is enough to consider [HProp]-valued families. *)
 Definition IsSigmaCompactProps (A : Type)
   := forall P : A -> HProp,
       (forall a : A, Decidable (P a)) -> Decidable (sig P).
@@ -56,18 +56,40 @@ Proof.
     exact (fun u => r (a; u)).
 Defined.
 
+(** Compact types are closed under retracts. *)
+Definition issigmacompact_retract {A R : Type} {f : A -> R} {g : R -> A}
+  (s : f o g == idmap) (c : IsSigmaCompact A)
+  : IsSigmaCompact R.
+Proof.
+  intros P dP; destruct (c (P o f) _) as [u|v].
+  1: left; exact (f u.1; u.2).
+  right; intros [r pr].
+  apply v.
+  exists (g r).
+  exact ((s r)^ # pr).
+Defined.
+
+Definition issigmacompact_equiv {A B : Type} (f : A -> B) `{!IsEquiv f}
+  (c : IsSigmaCompact B)
+  : IsSigmaCompact A
+  := issigmacompact_retract (eissect f) c.
+
+(** Any compact type is decidable. *)
+Definition decidable_issigmacompact {A : Type} (c : IsSigmaCompact A)
+  : Decidable A.
+Proof.
+  destruct (c (fun (_ : A) => Unit) _) as [c1|c2].
+  - exact (inl c1.1).
+  - right; intro a.
+    exact (c2 (a; pt)).
+Defined.
+
+(** ** Equivalent definitions *)
+
 (** A type [A] is compact if for every decidable predicate [P] on [A] we can either find an element of [A] making [P] false or we can show that [P a] always holds. *)
 Definition IsCompact (A : Type)
   := forall P : A -> Type, (forall a : A, Decidable (P a)) ->
                               {a : A & ~ P a} + (forall a : A, P a).
-
-(** Any compact type is decidable. *)
-Definition decidable_iscompact {A : Type} (c : IsCompact A) : Decidable A.
-Proof.
-  destruct (c (fun (_ : A) => Empty) _) as [c1|c2].
-  - exact (inl c1.1).
-  - exact (inr c2).
-Defined.
 
 (** Compactness is equivalent to assuming the same for [HProp]-valued decidable predicates. *)
 Definition IsCompactProps (A : Type)
@@ -84,7 +106,7 @@ Proof.
     apply merely_inhabited_iff_inhabited_stable, r.
 Defined.
 
-(** Since decidable types are stable, it's also equivalent to negate [P] in the definition. *)
+(** Since decidable types are stable, it's also equivalent to negate [P] in the definition. We use this as an intermediate notion to show that [IsCompact] and [IsSigmaCompact] are logically equivalent. *)
 Definition IsCompact' (A : Type)
   := forall P : A -> Type, (forall a : A, Decidable (P a)) ->
                               {a : A & P a} + (forall a : A, ~ P a).
@@ -102,7 +124,7 @@ Proof.
   all: intro a; by apply stable_decidable.
 Defined.
 
-Definition equiv_iscompact'_issigmacompact {A : Type}
+Definition iff_iscompact'_issigmacompact (A : Type)
   : IsCompact' A <-> IsSigmaCompact A.
 Proof.
   apply iff_functor_forall; intro P.
@@ -112,19 +134,9 @@ Proof.
   napply equiv_sig_ind.
 Defined.
 
-(** Compact types are closed under retracts. *)
-Definition iscompact_retract {A : Type} (R : RetractOf A) (c : IsCompact A)
-  : IsCompact (retract_type R).
-Proof.
-  intros P dP; destruct (c (P o (retract_retr R)) _) as [l|r].
-  - exact (inl ((retract_retr R) l.1; l.2)).
-  - exact (inr (fun a =>  ((retract_issect R) a) # r ((retract_sect R) a))).
-Defined.
-
-Definition iscompact_retract' {A R : Type} {f : A -> R} {g : R -> A}
-  (s : f o g == idmap) (c : IsCompact A)
-  : IsCompact R
-  := iscompact_retract (Build_RetractOf A R f g s) c.
+Definition iff_iscompact_issigmacompact (A : Type)
+  : IsCompact A <-> IsSigmaCompact A
+  := iff_compose (iff_iscompact_iscompact' A) (iff_iscompact'_issigmacompact A).
 
 (** ** Basic definitions of searchable types *)
 
@@ -149,33 +161,44 @@ Defined.
 
 (** A type is searchable if and only if it is compact and inhabited. *)
 
-Definition issearchable_iscompact_inhabited {A : Type}
-  : IsCompact A -> A -> IsSearchable A.
+Definition issearchable_issigmacompact_inhabited {A : Type}
+  (c : IsSigmaCompact A)
+  : A -> IsSearchable A.
 Proof.
-  intros c a P dP.
-  induction (c P _) as [l|r].
+  intros a P dP.
+  destruct (c (fun x => ~ (P x)) _) as [l|r].
   - exists l.1.
     intro h; contradiction (l.2 h).
-  - exact (a; fun _ => r).
+  - exists a; intros _ x.
+    rapply stable_decidable.
+    exact (fun u => r (x; u)).
 Defined.
 
-Definition iscompact_issearchable {A : Type} : IsSearchable A -> IsCompact A.
+Definition issigmacompact_issearchable {A : Type} (s : IsSearchable A)
+  : IsSigmaCompact A.
 Proof.
-  intros h P dP.
-  set (w := (h P dP).1).
+  intros P dP.
+  destruct (s (fun x => ~ (P x)) _) as [w hw].
   destruct (dP w) as [x|y].
-  - exact (inr ((h P dP).2 x)).
-  - exact (inl (w; y)).
+  - exact (inl (w; x)).
+  - exact (inr (fun u => hw y u.1 u.2)).
 Defined.
 
-Definition inhabited_issearchable {A : Type} : IsSearchable A -> A
-  := fun s => (s (fun a => Unit) _).1.
+Definition inhabited_issearchable {A : Type} (s : IsSearchable A) : A
+  := (s (fun a => Unit) _).1.
 
-Definition searchable_iff {A : Type} : IsSearchable A <-> A * (IsCompact A)
-  := (fun s => (inhabited_issearchable s, iscompact_issearchable s),
-        fun c => issearchable_iscompact_inhabited (snd c) (fst c)).
+Definition issearchable_iff (A : Type) : IsSearchable A <-> A * (IsSigmaCompact A)
+  := (fun s => (inhabited_issearchable s, issigmacompact_issearchable s),
+        fun c => issearchable_issigmacompact_inhabited (snd c) (fst c)).
 
 (** ** Examples of searchable and compact types  *)
+
+(** Contractible types are searchable. *)
+Definition issigmacompact_contr {A} (c : Contr A) : IsSigmaCompact A.
+Proof.
+  intros P dP.
+  rapply (decidable_equiv _ (equiv_contr_sigma _)^-1).
+Defined.
 
 Definition issearchable_contr {A} (c : Contr A) : IsSearchable A.
 Proof.
@@ -185,6 +208,7 @@ Proof.
   by induction (contr a).
 Defined.
 
+(** [Bool] is searchable. *)
 Definition issearchable_Bool : IsSearchable Bool.
 Proof.
   intros P dP.
@@ -192,24 +216,25 @@ Proof.
   all: by intros p' [].
 Defined.
 
+Definition issigmacompact_bool : IsSigmaCompact Bool
+  := issigmacompact_issearchable issearchable_Bool.
+
 (** The empty type is trivially compact. *)
-Definition iscompact_empty : IsCompact Empty
-  := fun P dP => inr (fun a => Empty_rec a).
+Definition issigmacompact_empty : IsSigmaCompact Empty
+  := fun P dP => inr pr1.
 
-Definition iscompact_empty' {A : Type} (na : ~A) : IsCompact A
-  := fun p dP => inr (fun a => Empty_rec (na a)).
-
-Definition iscompact_iff_not_or_issearchable {A : Type} :
-  IsCompact A <-> (~ A) + IsSearchable A.
+(** Since compactness implies decidability, a compact type is either empty or searchable. *)
+Definition issigmacompact_iff_not_or_issearchable (A : Type)
+  : IsSigmaCompact A <-> (~ A) + IsSearchable A.
 Proof.
   constructor.
   - intro c.
-    destruct (decidable_iscompact c) as [l|r].
-    + exact (inr (issearchable_iscompact_inhabited c l)).
+    destruct (decidable_issigmacompact c) as [l|r].
+    + exact (inr (issearchable_issigmacompact_inhabited c l)).
     + exact (inl r).
   - intros [l|r].
-    + exact (iscompact_empty' l).
-    + exact (iscompact_issearchable r).
+    + exact (fun P dP => inr (l o  pr1)).
+    + exact (issigmacompact_issearchable r).
 Defined.
 
 (** Assuming univalence, the type of propositions is searchable. *)
@@ -225,19 +250,20 @@ Proof.
 Defined.
 
 (** Assuming the set truncation map has a section, a type is compact if and only if its set truncation is compact. *)
-Definition compact_set_trunc_compact `{Univalence} {A : Type}
+Definition issigmacompact_iff_issigmacompact_set_trunc `{Univalence} {A : Type}
   (f : (Tr 0 A) -> A) (s : tr o f == idmap)
-  : IsCompact A <-> IsCompact (Tr 0 A).
+  : IsSigmaCompact A <-> IsSigmaCompact (Tr 0 A).
 Proof.
   constructor.
-  1: exact (iscompact_retract' s).
-  intro cpt; rapply iscompact_iscompactprops.
+  1: exact (issigmacompact_retract s).
+  intro cpt; rapply issigmacompact_issigmacompactprops.
   intros P dP.
   destruct (cpt (Trunc_rec P)) as [l|r].
   - intro a; strip_truncations.
     exact (dP a).
-  - exact (inl (f l.1; fun x => l.2 (ap (Trunc_rec P) (s l.1) # x))).
-  - exact (inr (fun a => r (tr a))).
+  - left; exists (f l.1).
+    exact ((ap (Trunc_rec P) (s l.1))^ # l.2).
+  - right; refine (fun a => r (tr a.1; a.2)).
 Defined.
 
 (** Assuming univalence, if the domain of a surjective map is searchable, then so is its codomain. *)
@@ -277,13 +303,13 @@ Proof.
     intro x; by apply path_ishprop.
 Defined.
 
-Definition iscompact_image `{Univalence} (A B : Type)
-  (c : IsCompact A)
+Definition issigmacompact_image `{Univalence} {A B : Type}
+  (c : IsSigmaCompact A)
   (f : A -> B) (surj : IsSurjection f)
-  : IsCompact B.
+  : IsSigmaCompact B.
 Proof.
-  apply iscompact_iff_not_or_issearchable.
-  destruct ((fst iscompact_iff_not_or_issearchable) c) as [n|s].
+  apply issigmacompact_iff_not_or_issearchable.
+  destruct ((fst (issigmacompact_iff_not_or_issearchable A)) c) as [n|s].
   - left; by rapply conn_map_elim.
   - right; by rapply issearchable_image.
 Defined.
