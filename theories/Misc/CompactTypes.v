@@ -7,8 +7,7 @@ Require Import Misc.UStructures.
 Require Import Spaces.NatSeq.Core Spaces.NatSeq.UStructure.
 Require Import Homotopy.Suspension.
 Require Import Pointed.Core.
-Require Import Universes.TruncType HProp.
-Require Import Idempotents.
+Require Import Universes.TruncType Universes.HProp.
 
 Local Open Scope nat_scope.
 Local Open Scope pointed_scope.
@@ -27,7 +26,7 @@ Definition IsSigmaCompactProps (A : Type)
 Definition issigmacompactprops_issigmacompact {A : Type}
   (h : IsSigmaCompact A)
   : IsSigmaCompactProps A
-  := fun P hP => h P hP.
+  := h.
 
 Definition issigmacompact_issigmacompactprops {A : Type}
   (h : IsSigmaCompactProps A)
