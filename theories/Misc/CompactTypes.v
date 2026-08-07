@@ -2,12 +2,12 @@
 
 From HoTT Require Import Basics Types.
 Require Import Truncations.Core Truncations.Connectedness.
-Require Import Spaces.Nat.Core.
+Require Import Spaces.Nat.Core Finite.Fin.
 Require Import Misc.UStructures.
 Require Import Spaces.NatSeq.Core Spaces.NatSeq.UStructure.
 Require Import Homotopy.Suspension.
 Require Import Pointed.Core.
-Require Import Universes.TruncType.
+Require Import Universes.TruncType HProp.
 Require Import Idempotents.
 
 Local Open Scope nat_scope.
@@ -312,6 +312,51 @@ Proof.
   destruct ((fst (issigmacompact_iff_not_or_issearchable A)) c) as [n|s].
   - left; by rapply conn_map_elim.
   - right; by rapply issearchable_image.
+Defined.
+
+(** For any family of compact types over a compact type, the corresponding dependent sum type is compact. *)
+Definition issigmacompact_sigma {A : Type} {P : A -> Type}
+  (cA : IsSigmaCompact A) (cP : forall (a : A), IsSigmaCompact (P a))
+  : IsSigmaCompact (sig P).
+Proof.
+  intros Q dQ.
+  apply (decidable_equiv _ (equiv_sigma_assoc P Q)).
+  apply cA; intro a.
+  by apply cP; intro p.
+Defined.
+
+Definition issigmacompact_sum {A B : Type}
+  (cA : IsSigmaCompact A) (cB : IsSigmaCompact B)
+  : IsSigmaCompact (A + B).
+Proof.
+  apply (issigmacompact_equiv (sig_of_sum A B)).
+  apply issigmacompact_sigma.
+  - exact issigmacompact_bool.
+  - by destruct a.
+Defined.
+
+(** Inductively, any type of the form [Fin n] is comapct. *)
+Definition issigmacompact_fin (n : nat)
+  : IsSigmaCompact (Fin n).
+Proof.
+  induction n.
+  - exact (fun P dP => inr proj1).
+  - apply (issigmacompact_sum IHn).
+    rapply issigmacompact_contr.
+Defined.
+
+(* A decidable subtype of a compact type is compact *)
+Definition issigmacompact_detachable_subtype {A : Type} {P : A -> HProp}
+  (cA : IsSigmaCompact A) (dP : forall (a : A), Decidable (P a))
+  : IsSigmaCompact (sig P).
+Proof.
+  apply (issigmacompact_sigma cA); cbn beta.
+  intro a.
+  destruct (equiv_decidable_hprop (P a)) as [e1|e2].
+  - apply (issigmacompact_equiv e1).
+    rapply issigmacompact_contr.
+  - apply (issigmacompact_equiv e2).
+    exact (fun P dP => inr proj1).
 Defined.
 
 Section Uniform_Search.
