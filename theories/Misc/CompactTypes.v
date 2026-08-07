@@ -200,7 +200,7 @@ Proof.
     + exact (inr (issearchable_issigmacompact_inhabited c l)).
     + exact (inl r).
   - intros [l|r].
-    + exact (fun P dP => inr (l o  pr1)).
+    + exact (fun P dP => inr (l o pr1)).
     + exact (issigmacompact_issearchable r).
 Defined.
 
@@ -237,6 +237,17 @@ Definition issigmacompact_bool : IsSigmaCompact Bool
 (** The empty type is trivially compact. *)
 Definition issigmacompact_empty : IsSigmaCompact Empty
   := fun P dP => inr pr1.
+
+(** Any decidable proposition is compact. *)
+Definition issigmacompact_decidable_hprop {A : HProp} (dA : Decidable A)
+  : IsSigmaCompact A.
+Proof.
+  destruct (equiv_decidable_hprop A) as [e1|e2].
+  - apply (issigmacompact_equiv e1).
+    rapply issigmacompact_contr.
+  - apply (issigmacompact_equiv e2).
+    exact (fun P dP => inr proj1).
+Defined.
 
 (** Assuming univalence, the type of propositions is searchable. *)
 Definition issearchable_hprop `{Univalence} : IsSearchable HProp.
@@ -354,11 +365,7 @@ Definition issigmacompact_detachable_subtype {A : Type} {P : A -> HProp}
 Proof.
   apply (issigmacompact_sigma cA); cbn beta.
   intro a.
-  destruct (equiv_decidable_hprop (P a)) as [e1|e2].
-  - apply (issigmacompact_equiv e1).
-    rapply issigmacompact_contr.
-  - apply (issigmacompact_equiv e2).
-    exact (fun P dP => inr proj1).
+  rapply issigmacompact_decidable_hprop.
 Defined.
 
 Section Uniform_Search.
