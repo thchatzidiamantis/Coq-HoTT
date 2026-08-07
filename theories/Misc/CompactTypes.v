@@ -190,7 +190,7 @@ Definition issearchable_iff (A : Type) : IsSearchable A <-> A * (IsSigmaCompact 
   := (fun s => (inhabited_issearchable s, issigmacompact_issearchable s),
         fun c => issearchable_issigmacompact_inhabited (snd c) (fst c)).
 
-(** Since compactness implies decidability, a compact type is either empty or searchable. *)
+(** Since compactness implies decidability, a type is compact if and only if it is either empty or searchable. *)
 Definition issigmacompact_iff_not_or_issearchable (A : Type)
   : IsSigmaCompact A <-> (~ A) + IsSearchable A.
 Proof.
@@ -246,7 +246,7 @@ Proof.
   - apply (issigmacompact_equiv e1).
     rapply issigmacompact_contr.
   - apply (issigmacompact_equiv e2).
-    exact (fun P dP => inr proj1).
+    apply issigmacompact_empty.
 Defined.
 
 (** Assuming univalence, the type of propositions is searchable. *)
