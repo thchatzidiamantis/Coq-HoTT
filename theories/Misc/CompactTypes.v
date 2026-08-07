@@ -190,6 +190,20 @@ Definition issearchable_iff (A : Type) : IsSearchable A <-> A * (IsSigmaCompact 
   := (fun s => (inhabited_issearchable s, issigmacompact_issearchable s),
         fun c => issearchable_issigmacompact_inhabited (snd c) (fst c)).
 
+(** Since compactness implies decidability, a compact type is either empty or searchable. *)
+Definition issigmacompact_iff_not_or_issearchable (A : Type)
+  : IsSigmaCompact A <-> (~ A) + IsSearchable A.
+Proof.
+  constructor.
+  - intro c.
+    destruct (decidable_issigmacompact c) as [l|r].
+    + exact (inr (issearchable_issigmacompact_inhabited c l)).
+    + exact (inl r).
+  - intros [l|r].
+    + exact (fun P dP => inr (l o  pr1)).
+    + exact (issigmacompact_issearchable r).
+Defined.
+
 (** ** Examples of searchable and compact types, and closure properties *)
 
 (** Contractible types are compact. *)
@@ -223,20 +237,6 @@ Definition issigmacompact_bool : IsSigmaCompact Bool
 (** The empty type is trivially compact. *)
 Definition issigmacompact_empty : IsSigmaCompact Empty
   := fun P dP => inr pr1.
-
-(** Since compactness implies decidability, a compact type is either empty or searchable. *)
-Definition issigmacompact_iff_not_or_issearchable (A : Type)
-  : IsSigmaCompact A <-> (~ A) + IsSearchable A.
-Proof.
-  constructor.
-  - intro c.
-    destruct (decidable_issigmacompact c) as [l|r].
-    + exact (inr (issearchable_issigmacompact_inhabited c l)).
-    + exact (inl r).
-  - intros [l|r].
-    + exact (fun P dP => inr (l o  pr1)).
-    + exact (issigmacompact_issearchable r).
-Defined.
 
 (** Assuming univalence, the type of propositions is searchable. *)
 Definition issearchable_hprop `{Univalence} : IsSearchable HProp.
@@ -285,6 +285,18 @@ Definition issearchable_image `{Univalence} (A B : Type)
   : IsSearchable B
   := issearchable_issearchableprops (issearchableprops_image A B s f surj).
 
+(** Consequently, the same is true for compact types.  *)
+Definition issigmacompact_image `{Univalence} {A B : Type}
+  (c : IsSigmaCompact A)
+  (f : A -> B) (surj : IsSurjection f)
+  : IsSigmaCompact B.
+Proof.
+  apply issigmacompact_iff_not_or_issearchable.
+  destruct (fst (issigmacompact_iff_not_or_issearchable A) c) as [n|s].
+  - left; by rapply conn_map_elim.
+  - right; by rapply issearchable_image.
+Defined.
+
 (** Assuming univalence, every pointed, connected type is searchable. *)
 Definition issearchable_isconnected_ptype `{Univalence} (A : pType)
   (c : IsConnected 0 A)
@@ -302,17 +314,6 @@ Proof.
     1: exact (true; idpath).
     1: exact (false; idpath).
     intro x; by apply path_ishprop.
-Defined.
-
-Definition issigmacompact_image `{Univalence} {A B : Type}
-  (c : IsSigmaCompact A)
-  (f : A -> B) (surj : IsSurjection f)
-  : IsSigmaCompact B.
-Proof.
-  apply issigmacompact_iff_not_or_issearchable.
-  destruct ((fst (issigmacompact_iff_not_or_issearchable A)) c) as [n|s].
-  - left; by rapply conn_map_elim.
-  - right; by rapply issearchable_image.
 Defined.
 
 (** For any family of compact types over a compact type, the corresponding dependent sum type is compact. *)
