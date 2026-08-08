@@ -669,8 +669,8 @@ Proof.
   all:exact _.
 Defined.
 
-(** And from that, a long exact sequence of homotopy groups (though for now it is just a sequence of pointed sets). *)
-Definition Pi_les `{Univalence} {F X Y : pType}
+(** And from that, a long exact sequence of homotopy groups, expressed as a sequence of pointed sets.  In [Homotopy.HomotopyGroup] this is converted into the equivalent sequence [Pi_les], whose maps are expressed using [fmap (pPi n)]. *)
+Definition Pi_les_pset `{Univalence} {F X Y : pType}
   (i : F ->* X) (f : X ->* Y) `{IsExact purely F X Y i f}
   : LongExactSequence (Tr (-1)) N3
   := trunc_les (-1) (loops_les i f).
