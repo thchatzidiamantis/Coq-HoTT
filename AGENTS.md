@@ -14,7 +14,7 @@ and developer tooling in `etc/`.
 - Note that `Basics` (especially `Basics.Overture`) provides many of the
   things usually provided by `Init` in standard Rocq developments.
 - Look up the supported Rocq versions in the CI matrices
-  (`.github/workflows/ci.yml`) rather than hard-coding them here; avoid
+  (`.github/workflows/ci.yml`); avoid
   unnecessary version-specific features.
 
 ## Proof Development
