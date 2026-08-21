@@ -138,7 +138,7 @@ Section HomotopyConstructor.
     refine (cat_hbiprod_pr_in i i $@ _).
     unfold cat_coprod_prod_component.
     generalize (dec_paths i i).
-    by napply decidable_paths_refl.
+    by rapply decidablepaths_refl.
   Defined.
 
   (** An inclusion followed by a projection of a different index is zero. *)
@@ -206,7 +206,7 @@ Section EquivConstructor.
     refine (cat_biprod_pr_in i i $@ _).
     unfold cat_coprod_prod_component.
     generalize (dec_paths i i).
-    by napply decidable_paths_refl.
+    by rapply decidablepaths_refl.
   Defined.
 
   Definition cat_biprod_pr_in_ne (i j : I) (p : i <> j)
