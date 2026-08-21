@@ -90,27 +90,32 @@ Definition int_succ_isadj (z : Int)
 
 (** ** Induction and recursion principles for Int *)
 
-Definition int_ind_equiv {P : Int -> Type} (t0 : P zero)
-  (e : forall z : Int, P z -> P z.+1) {iseq : forall z, IsEquiv (e z)}
+Definition int_ind_biinv {P : Int -> Type} (t0 : P zero)
+  (e : forall z : Int, P z -> P z.+1) {iseq : forall z, IsBiInv (e z)}
   : forall z, P z.
 Proof.
   snapply (int_ind t0 e).
   - intro z.
-    exact ((e z.-1)^-1 o transport P (int_succ_pred z)^).
+    exact ((retr_biinv (e z.-1)) o transport P (int_succ_pred z)^).
   - intro z.
     exact ((e (int_pred2 z))^-1 o transport P (int_succ_pred2 z)^).
   - intros z p; cbn beta.
-    lhs_V napply (ap_transport _ (fun z => (e z)^-1)).
-    lhs napply (ap (e z)^-1).
+    lhs_V napply (ap_transport _ (fun z => retr_biinv (e z))).
+    lhs napply (ap (retr_biinv (e z))).
     { lhs napply transport_compose.
       symmetry; napply transport_pp. }
     rewrite int_succ_isadj.
     rewrite concat_Vp; cbn.
-    apply eissect.
+    apply eissect_biinv.
   - intros z p; cbn beta.
     rewrite eisretr.
     apply transport_pV.
 Defined.
+
+Definition int_ind_equiv {P : Int -> Type} (t0 : P zero)
+  (e : forall z : Int, P z -> P z.+1) {iseq : forall z, IsEquiv (e z)}
+  : forall z, P z
+  := @int_ind_biinv P t0 e (fun z => isbiinv_isequiv _ (iseq z)).
 
 Section RecursionPrinciple.
 
