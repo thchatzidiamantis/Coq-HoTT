@@ -7,9 +7,11 @@ Require Export Equiv.BiInv.
 
 (** * The integers, defined as a HIT *)
 
-(** Following "The integers as a higher inductive type" by Scoccola and Altenkirch, we define the integers as a higher inductive type.  Morally it is the free pointed type with a biinvertible self-map.  This representation leads to more convenient induction and recursion principles that avoid needing to split into many cases as happens with the signed integers [SInt].  Moreover, many results hold definitionally instead of requiring lengthy proofs.  Examples include the results about addition, multiplication, iteration of equivalences and exponentiation of loops such as [int_add_succ_l], [int_mul_pred_l], [int_iter_succ_l], and [loopexp_pred_r] to name just a few.  We also have a convenient lemma [int_homotopic for proving that two functions [Int -> P] are homotopic.  Part of what makes it easy to use is that the functions being compared often compute definitionally on [zero] and [int_succ].
+(** Following "The integers as a higher inductive type" by Altenkirch and Scoccola, we define the integers as a higher inductive type.  Morally it is the free pointed type with a biinvertible self-map.  This representation leads to more convenient induction and recursion principles that avoid needing to split into many cases as happens with the signed integers [SInt].  Moreover, many results hold definitionally instead of requiring lengthy proofs.  Examples include results about addition, multiplication, iteration of equivalences and exponentiation of loops such as [int_add_succ_l], [int_mul_pred_l], [int_iter_succ_l], and [loopexp_pred_r] to name just a few.  We also have a convenient lemma [int_homotopic] for proving that two functions [Int -> P] are homotopic.  Part of what makes it easy to use is that the functions being compared often compute definitionally on [zero] and [int_succ].
 
-One thing to be aware of is that the representation of integers is no longer unique definitionally. For example, [2 - 3] is not definitionally equal to [-1].  [int_reduce] or [ltac:(decide)] can be used to show that these are equal, with [int_reduce] being faster. *)
+One difference compared to the Altenkirch-Scoccola paper is that we prove additional induction principles, [int_ind_biinv] and [int_ind_equiv].  The key to these is a carefully chosen proof of [int_succ_pred] that satisfies the half-adjoint law.  Then, using [int_ind_equiv], we are able to trivially prove [int_homotopic] (their Theorem 2.4) without using univalence or needing to introduce "prBiInv" (squares preserving bi-invertible maps).  As a result, we don't need univalence for any fundamental results about the integers.
+
+One thing to be aware of is that the representation of integers is no longer definitionally unique. For example, [2 - 3] is not definitionally equal to [-1].  [int_reduce] or [ltac:(decide)] can be used to show that these are equal, with [int_reduce] being faster, as illustrated in test/Spaces/Int.v. *)
 
 Set Universe Minimization ToSet.
 
@@ -90,27 +92,33 @@ Definition int_succ_isadj (z : Int)
 
 (** ** Induction and recursion principles for Int *)
 
-Definition int_ind_equiv {P : Int -> Type} (t0 : P zero)
-  (e : forall z : Int, P z -> P z.+1) {iseq : forall z, IsEquiv (e z)}
+Definition int_ind_biinv {P : Int -> Type} (t0 : P zero)
+  (e : forall z : Int, P z -> P z.+1) {iseq : forall z, IsBiInv (e z)}
   : forall z, P z.
 Proof.
   snapply (int_ind t0 e).
   - intro z.
-    exact ((e z.-1)^-1 o transport P (int_succ_pred z)^).
+    exact ((retr_biinv (e z.-1)) o transport P (int_succ_pred z)^).
   - intro z.
     exact ((e (int_pred2 z))^-1 o transport P (int_succ_pred2 z)^).
   - intros z p; cbn beta.
-    lhs_V napply (ap_transport _ (fun z => (e z)^-1)).
-    lhs napply (ap (e z)^-1).
+    lhs_V napply (ap_transport _ (fun z => retr_biinv (e z))).
+    lhs napply (ap (retr_biinv (e z))).
     { lhs napply transport_compose.
-      symmetry; napply transport_pp. }
-    rewrite int_succ_isadj.
-    rewrite concat_Vp; cbn.
-    apply eissect.
+      lhs_V napply transport_pp.
+      apply transport2.
+      lhs napply (ap inverse (int_succ_isadj z) @@ 1).
+      apply concat_Vp. }
+    cbn. apply eissect_biinv.
   - intros z p; cbn beta.
     rewrite eisretr.
     apply transport_pV.
 Defined.
+
+Definition int_ind_equiv {P : Int -> Type} (t0 : P zero)
+  (e : forall z : Int, P z -> P z.+1) {iseq : forall z, IsEquiv (e z)}
+  : forall z, P z
+  := @int_ind_biinv P t0 e (fun z => isbiinv_isequiv _ (iseq z)).
 
 Section RecursionPrinciple.
 
@@ -678,7 +686,7 @@ Defined.
 Definition equiv_path_loopexp {A : Type} (p : A = A) (z : Int) (a : A)
   : equiv_path A A (loopexp p z) a = int_iter (equiv_path A A p) z a.
 Proof.
-  refine (int_iter_commute_map _ _ (fun p => equiv_path A A p a) _ _ _).
+  apply int_iter_commute_map with (g:=fun p => equiv_path A A p a).
   intro q; cbn.
   napply transport_pp.
 Defined.
@@ -687,9 +695,9 @@ Definition loopexp_path_universe `{Univalence} {A : Type} (f : A <~> A)
   (z : Int) (a : A)
   : transport idmap (loopexp (path_universe f) z) a = int_iter f z a.
 Proof.
-  revert f. equiv_intro (equiv_path A A) p.
-  refine (_ @ equiv_path_loopexp p z a).
-  refine (ap (fun q => equiv_path A A (loopexp q z) a) _).
+  revert f; equiv_intro (equiv_path A A) p.
+  rhs_V napply equiv_path_loopexp.
+  nrefine (ap (fun q => equiv_path A A (loopexp q z) a) _).
   apply eissect.
 Defined.
 

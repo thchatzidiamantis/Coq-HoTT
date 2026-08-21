@@ -1,4 +1,6 @@
-Require Import HoTT.Basics Types.Prod Types.Equiv Types.Sigma Types.Universe.
+From HoTT.Basics Require Import Overture Equivalences Tactics Iff Trunc.
+From HoTT.Basics Require Import PathGroupoids.
+From HoTT.Types Require Import Sigma Prod Equiv.
 
 Local Open Scope path_scope.
 Generalizable Variables A B f.
