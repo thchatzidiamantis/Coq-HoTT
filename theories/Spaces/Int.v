@@ -103,10 +103,11 @@ Proof.
     lhs_V napply (ap_transport _ (fun z => retr_biinv (e z))).
     lhs napply (ap (retr_biinv (e z))).
     { lhs napply transport_compose.
-      symmetry; napply transport_pp. }
-    rewrite int_succ_isadj.
-    rewrite concat_Vp; cbn.
-    apply eissect_biinv.
+      lhs_V napply transport_pp.
+      apply transport2.
+      lhs napply (ap inverse (int_succ_isadj z) @@ 1).
+      apply concat_Vp. }
+    cbn. apply eissect_biinv.
   - intros z p; cbn beta.
     rewrite eisretr.
     apply transport_pV.
@@ -683,7 +684,7 @@ Defined.
 Definition equiv_path_loopexp {A : Type} (p : A = A) (z : Int) (a : A)
   : equiv_path A A (loopexp p z) a = int_iter (equiv_path A A p) z a.
 Proof.
-  refine (int_iter_commute_map _ _ (fun p => equiv_path A A p a) _ _ _).
+  apply int_iter_commute_map with (g:=fun p => equiv_path A A p a).
   intro q; cbn.
   napply transport_pp.
 Defined.
@@ -692,9 +693,9 @@ Definition loopexp_path_universe `{Univalence} {A : Type} (f : A <~> A)
   (z : Int) (a : A)
   : transport idmap (loopexp (path_universe f) z) a = int_iter f z a.
 Proof.
-  revert f. equiv_intro (equiv_path A A) p.
-  refine (_ @ equiv_path_loopexp p z a).
-  refine (ap (fun q => equiv_path A A (loopexp q z) a) _).
+  revert f; equiv_intro (equiv_path A A) p.
+  rhs_V napply equiv_path_loopexp.
+  nrefine (ap (fun q => equiv_path A A (loopexp q z) a) _).
   apply eissect.
 Defined.
 
