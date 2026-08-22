@@ -1,10 +1,8 @@
-From HoTT Require Import Basics Types ReflectiveSubuniverse Pointed.Core.
+From HoTT Require Import Basics Types ReflectiveSubuniverse Modality Pointed.Core Pointed.pMap.
 
 Local Open Scope pointed_scope.
 
 (** * Modalities, reflective subuniverses and pointed types *)
-
-(** So far, everything is about general reflective subuniverses, but in the future results about modalities can be placed here as well. *)
 
 #[export] Instance ispointed_O `{O : ReflectiveSubuniverse} (X : Type)
   `{IsPointed X} : IsPointed (O X) := to O _ (point X).
@@ -31,6 +29,37 @@ Proof.
   cbn.
   apply moveL_pV.
   exact (concat_1p _)^.
+Defined.
+
+(** A pointed version of the induction principle for a modality. *)
+Definition pO_ind `{O : Modality} {X : pType} {Y : pFam [O X, _]}
+ `{forall x, In O (Y x)} (f : pForall X (pfam_precompose Y (pto O X)))
+  : pForall [O X, _] Y
+  := Build_pForall _ Y (O_ind Y f) (O_ind_beta Y f pt @ dpoint_eq f).
+
+Definition pO_ind_beta `{O : Modality} {X : pType} {Y : pFam [O X, _]}
+ `{forall x, In O (Y x)} (f : pForall X (pfam_precompose Y (pto O X)))
+  : functor_pforall_left (pO_ind f) (pto O X) ==* f.
+Proof.
+  srapply Build_pHomotopy.
+  1: napply O_ind_beta.
+  cbn; unfold moveL_equiv_V; cbn.
+  apply moveL_pV.
+  symmetry; lhs napply concat_1p.
+  lhs napply ap_idmap.
+  apply concat_1p.
+Defined.
+
+(** To show two pointed maps out of [O X] into an [O]-local type are pointed homotopic, it is enough to compare their precomposites with [pto O X]. Unlike passing through [pequiv_ptr_rec], this needs no [Funext]. And note that it goes through without assuming that [O] is a modality. *)
+Definition pO_indpaths `{O : ReflectiveSubuniverse} {X Y : pType} `{In O Y}
+  {f g : [O X, _] ->* Y} (h : f o* pto O X ==* g o* pto O X)
+  : f ==* g.
+Proof.
+  snapply Build_pHomotopy.
+  - exact (O_indpaths _ _ h).
+  - lhs napply O_indpaths_beta.
+    lhs napply (dpoint_eq h); cbn.
+    exact (concat_1p _ @@ inverse2 (concat_1p _)).
 Defined.
 
 (** A pointed version of the universal property. *)
@@ -65,10 +94,8 @@ Definition equiv_O_pfunctor `(O : ReflectiveSubuniverse) {X Y : pType}
 
 (** Pointed naturality of [O_pfunctor]. *)
 Definition pto_O_natural `(O : ReflectiveSubuniverse) {X Y : pType}
-  (f : X ->* Y) : O_pfunctor O f o* pto O X ==* pto O Y o* f.
-Proof.
-  napply pO_rec_beta.
-Defined.
+  (f : X ->* Y) : O_pfunctor O f o* pto O X ==* pto O Y o* f
+  := pO_rec_beta _.
 
 Definition pequiv_O_inverts `(O : ReflectiveSubuniverse) {X Y : pType}
   (f : X ->* Y) `{O_inverts O f}
